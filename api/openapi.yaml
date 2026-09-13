@@ -1,0 +1,398 @@
+openapi: 3.1.0
+info:
+  title: Marketplace API
+  description: Marketplace backend. Catalog domain.
+  version: 0.1.0
+paths:
+  /v1/health:
+    get:
+      tags:
+        - health
+      summary: Service health check
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  /v1/products:
+    get:
+      tags:
+        - products
+      summary: List products
+      responses:
+        "200":
+          description: Products found
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+    post:
+      tags:
+        - products
+      summary: Create a product
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductCreate"
+      responses:
+        "201":
+          description: Product created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /v1/products/{product_id}:
+    parameters:
+      - $ref: "#/components/parameters/ProductId"
+    get:
+      tags:
+        - products
+      summary: Get a product
+      responses:
+        "200":
+          description: Product found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags:
+        - products
+      summary: Update a product
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductUpdate"
+      responses:
+        "200":
+          description: Product updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+    delete:
+      tags:
+        - products
+      summary: Delete a product
+      description: Physically deletes the product. The product must have no associated offers.
+      responses:
+        "204":
+          description: Product deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /v1/offers:
+    get:
+      tags:
+        - offers
+      summary: List offers
+      parameters:
+        - name: seller_id
+          in: query
+          required: false
+          description: Return only the offers of this seller
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Offers found
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Offer"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+    post:
+      tags:
+        - offers
+      summary: Create an offer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OfferCreate"
+      responses:
+        "201":
+          description: Offer created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Offer"
+        "404":
+          description: Referenced product or seller does not exist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /v1/offers/{offer_id}:
+    parameters:
+      - $ref: "#/components/parameters/OfferId"
+    get:
+      tags:
+        - offers
+      summary: Get an offer
+      responses:
+        "200":
+          description: Offer found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Offer"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags:
+        - offers
+      summary: Update an offer
+      description: Updates price, stock or availability of an existing offer.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OfferUpdate"
+      responses:
+        "200":
+          description: Offer updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Offer"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+    delete:
+      tags:
+        - offers
+      summary: Delete an offer
+      responses:
+        "204":
+          description: Offer deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  parameters:
+    ProductId:
+      name: product_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    OfferId:
+      name: offer_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    NotFound:
+      description: Resource does not exist
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Conflict:
+      description: Resource cannot be deleted because related records exist
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    ValidationError:
+      description: Request payload failed validation
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/HTTPValidationError"
+
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - version
+      properties:
+        status:
+          type: string
+          example: ok
+        version:
+          type: string
+          example: 0.1.0
+
+    ErrorResponse:
+      description: Business error raised by the application.
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          enum:
+            - resource_not_found
+            - resource_in_use
+          example: resource_not_found
+        message:
+          type: string
+          example: Product not found
+
+    HTTPValidationError:
+      description: Field level validation error, generated by FastAPI.
+      type: object
+      properties:
+        detail:
+          type: array
+          items:
+            type: object
+
+    Product:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          example: Tenis XYZ
+        description:
+          type:
+            - string
+            - "null"
+          maxLength: 2000
+
+    ProductCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          example: Tenis XYZ
+        description:
+          type:
+            - string
+            - "null"
+          maxLength: 2000
+
+    ProductUpdate:
+      description: Only the submitted fields are changed.
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type:
+            - string
+            - "null"
+          maxLength: 2000
+
+    Offer:
+      description: Commercialization of a product by a seller.
+      type: object
+      required:
+        - id
+        - product_id
+        - seller_id
+        - price
+        - stock
+        - available
+      properties:
+        id:
+          type: string
+          format: uuid
+        product_id:
+          type: string
+          format: uuid
+        seller_id:
+          type: string
+          format: uuid
+        price:
+          $ref: "#/components/schemas/Price"
+        stock:
+          type: integer
+          minimum: 0
+          example: 10
+        available:
+          type: boolean
+          example: true
+
+    OfferCreate:
+      type: object
+      required:
+        - product_id
+        - seller_id
+        - price
+        - stock
+      properties:
+        product_id:
+          type: string
+          format: uuid
+        seller_id:
+          type: string
+          format: uuid
+        price:
+          $ref: "#/components/schemas/Price"
+        stock:
+          type: integer
+          minimum: 0
+        available:
+          type: boolean
+          default: true
+
+    OfferUpdate:
+      description: Only the submitted fields are changed.
+      type: object
+      properties:
+        price:
+          $ref: "#/components/schemas/Price"
+        stock:
+          type: integer
+          minimum: 0
+        available:
+          type: boolean
+
+    Price:
+      description: Decimal amount in BRL, as a string with two decimal places.
+      type: string
+      pattern: ^\d+\.\d{2}$
+      example: "299.00"

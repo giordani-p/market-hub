@@ -1,0 +1,4 @@
+# Credenciais locais — nunca expor ao agente
+.env
+.env.*
+!.env.example

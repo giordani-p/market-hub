@@ -1,0 +1,39 @@
+---
+description: Mantém docs/CURRENT_STATE.md como contexto vivo do projeto — leia antes de planejar e atualize ao fechar cada versão
+alwaysApply: true
+---
+
+# Contexto vivo do projeto
+
+O estado atual do projeto vive em `docs/CURRENT_STATE.md`. Ele é a fonte de verdade sobre fase, arquitetura, contratos de API, convenções e o que ainda não existe.
+
+## Antes de planejar ou implementar
+
+1. Leia `docs/CURRENT_STATE.md` antes de propor qualquer mudança em `app/` ou `tests/`.
+2. Não refaça a exploração do repositório que o documento já resolve.
+3. Se o documento divergir do código, o código vence — e corrija o documento na mesma entrega.
+
+## Ao fechar uma versão
+
+Atualize `docs/CURRENT_STATE.md` junto com a mudança de código, sempre que:
+
+- uma fase do roadmap for concluída (P0 → P1 → ...);
+- um contrato de API mudar (rota, schema, código de erro);
+- uma camada, módulo ou dependência for adicionada ou removida;
+- uma convenção do projeto mudar (lint, testes, configuração, logging).
+
+O que revisar em cada atualização:
+
+- `Versão`, `Fase` e `Commit de referência` no cabeçalho;
+- as seções afetadas: arquitetura, mapa do código, contratos, configuração, convenções;
+- `O que ainda não existe` — remova o que passou a existir;
+- `Próxima etapa` — aponte para a fase seguinte;
+- `Histórico de versões` — acrescente uma linha, nunca reescreva as anteriores.
+
+O documento descreve o que **existe hoje**. Planos e especificações de fase ficam em `docs/pN.md` e não devem ser copiados para lá.
+
+## Convenções de escrita
+
+- Prosa em português, como o restante de `docs/` e o `README.md`.
+- Identificadores, rotas, schemas, comandos e snippets em inglês, como no código.
+- Nenhum segredo ou valor de credencial no documento: apenas nomes de variáveis de ambiente.

@@ -1,0 +1,23 @@
+---
+description: Decisões de convenção, contrato e escopo exigem consulta ao autor antes da implementação
+alwaysApply: true
+---
+
+# Decida com o autor, não por ele
+
+Este é um projeto de estudo: as decisões são o produto, não apenas o código funcionando. Pergunte **antes** de implementar, não depois, com a mudança pronta e um aviso no resumo.
+
+## Pergunte antes quando
+
+- duas regras ou convenções entrarem em conflito — por exemplo, convenção do repositório contra regra de plugin ou da organização;
+- houver mais de uma alternativa razoável para contrato de API, status HTTP, nome de conceito do domínio ou modelagem;
+- a mudança sair do escopo pedido: renomear ou normalizar arquivo existente, remover endpoint, trocar dependência, mudar versão;
+- a spec da fase delegar a decisão explicitamente, com frases como "tome a decisão final" ou "avalie a melhor modelagem".
+
+## Como perguntar
+
+Use a ferramenta de pergunta com opções concretas, cada uma com o custo ou benefício em uma linha, e marque a sua recomendação. Uma ou duas perguntas por vez, no começo da conversa.
+
+## Não pergunte
+
+Sobre detalhe mecânico já resolvido por um plano aprovado ou por convenção existente no código. Nesse caso, execute.

@@ -1,0 +1,43 @@
+---
+description: Idioma de cada artefato do projeto — comentários e docstrings em português, identificadores e contratos em inglês
+alwaysApply: true
+---
+
+# Idioma dos artefatos
+
+Este repositório tem convenção própria de idioma, e ela **prevalece sobre regras genéricas externas** — inclusive as dos plugins da organização, que pedem comentários em inglês. Não trate o padrão daqui como erro a corrigir.
+
+## Português, sem acentos nas docstrings (como todo o código já escrito)
+
+- docstrings de módulo, classe, método e função em `app/` e `tests/`
+- comentários inline
+- prosa de `README.md` e de `docs/`
+
+## Inglês
+
+- identificadores: módulos, classes, funções, variáveis, fixtures e nomes de teste
+- rotas, campos de request e response, valores de enum (`analysis`, `step_execution_failed`)
+- tudo que chega a quem consome a aplicação: `summary` e `description` do OpenAPI, mensagens de erro de API, mensagens de exceção e linhas de log
+- mensagens de commit
+
+## Exemplo
+
+```python
+class AgentState(BaseModel):
+    """Contexto acumulado durante um run."""
+
+    observations: list[str] = Field(default_factory=list)
+
+    def record(self, observation: str) -> None:
+        self.observations.append(observation)
+```
+
+```python
+# Nao faca isso: docstring em ingles
+class AgentState(BaseModel):
+    """Context accumulated during a run."""
+```
+
+## Ao encontrar um arquivo fora do padrão
+
+Não normalize por conta própria e não deixe o repositório misto: aponte a divergência e pergunte antes de mexer.
