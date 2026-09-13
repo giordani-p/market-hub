@@ -32,7 +32,6 @@ class Settings(BaseSettings):
     reconcile_page_size: int = 50
     jobs_schedule_expression: str = "rate(15 minutes)"
 
-
     @property
     def cors_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

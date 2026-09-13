@@ -1501,13 +1501,52 @@ components:
         items:
           type: array
           items:
-            $ref: "#/components/schemas/OrderItem"
+            $ref: "#/components/schemas/BuyerOrderItem"
         created_at:
           type: string
           format: date-time
         updated_at:
           type: string
           format: date-time
+
+    BuyerOrderItem:
+      description: Order Item na visao do Buyer, com o produto exibido na compra.
+      type: object
+      required:
+        - id
+        - order_id
+        - offer_id
+        - quantity
+        - purchase_price
+        - status
+        - created_at
+        - updated_at
+        - product
+      properties:
+        id:
+          type: string
+          format: uuid
+        order_id:
+          type: string
+          format: uuid
+        offer_id:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          minimum: 1
+        purchase_price:
+          $ref: "#/components/schemas/Price"
+        status:
+          $ref: "#/components/schemas/OrderItemStatus"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        product:
+          $ref: "#/components/schemas/ProductSummary"
 
     OrderItem:
       type: object
