@@ -7,6 +7,7 @@ from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from app.core.config import get_settings
+from app.core.events import publish_pending
 
 
 class Base(DeclarativeBase):
@@ -24,14 +25,20 @@ def get_session_factory() -> sessionmaker[Session]:
     return sessionmaker(bind=get_engine(), autoflush=False, expire_on_commit=False)
 
 
-def get_session() -> Iterator[Session]:
-    """Dependencia do FastAPI: uma sessao por request, com commit ao final."""
-    session = get_session_factory()()
+def session_transaction(session_factory: sessionmaker[Session]) -> Iterator[Session]:
+    """Uma transacao: eventos so sao publicados apos commit bem-sucedido."""
+    session = session_factory()
     try:
         yield session
         session.commit()
+        publish_pending(session)
     except Exception:
         session.rollback()
         raise
     finally:
         session.close()
+
+
+def get_session() -> Iterator[Session]:
+    """Dependencia do FastAPI: uma sessao por request, com commit ao final."""
+    yield from session_transaction(get_session_factory())

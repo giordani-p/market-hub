@@ -33,7 +33,6 @@ class ProductResponse(BaseModel):
 
 class OfferCreate(BaseModel):
     product_id: UUID
-    seller_id: UUID
     price: Price
     stock: int = Field(ge=0)
     available: bool = True

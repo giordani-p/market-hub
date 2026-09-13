@@ -8,9 +8,11 @@ from logging.config import fileConfig
 
 from alembic import context
 
+from app.auth import models as auth_models  # noqa: F401
 from app.catalog import models as catalog_models  # noqa: F401
 from app.core.config import get_settings
 from app.database import Base, get_engine
+from app.orders import models as order_models  # noqa: F401
 
 config = context.config
 
