@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: Market Hub API
-  description: Market Hub backend. Catalog, Order and Communication domains.
-  version: 0.4.0
+  description: Market Hub backend. Catalog, Order, Communication and Support/Ops domains.
+  version: 0.5.0
 paths:
   /v1/health:
     get:
@@ -535,6 +535,58 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /v1/order-items/{item_id}/internal-comments:
+    parameters:
+      - $ref: "#/components/parameters/OrderItemId"
+    get:
+      tags:
+        - order-items
+      summary: List internal comments of the authenticated seller's order item
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Internal comments in chronological order
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InternalComment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      tags:
+        - order-items
+      summary: Create an internal comment on the authenticated seller's order item
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateInternalCommentRequest"
+      responses:
+        "201":
+          description: Internal comment created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InternalComment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
   /v1/conversations/{conversation_id}:
     parameters:
       - $ref: "#/components/parameters/ConversationId"
@@ -639,6 +691,150 @@ paths:
         "422":
           $ref: "#/components/responses/ValidationError"
 
+  /v1/ops/order-items:
+    get:
+      tags:
+        - ops
+      summary: List all order items for Ops
+      description: Not scoped to a seller. Optional seller_id filters by catalog seller.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: page_size
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/OrderItemStatus"
+        - name: from
+          in: query
+          required: false
+          description: Inclusive lower bound on OrderItem.created_at
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: false
+          description: Inclusive upper bound on OrderItem.created_at
+          schema:
+            type: string
+            format: date-time
+        - name: order_item_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: seller_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Paginated order items across all sellers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpsOrderItemListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /v1/ops/order-items/{item_id}:
+    parameters:
+      - $ref: "#/components/parameters/OrderItemId"
+    get:
+      tags:
+        - ops
+      summary: Get an order item for Ops
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Order item found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpsOrderItemDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/ops/order-items/{item_id}/internal-comments:
+    parameters:
+      - $ref: "#/components/parameters/OrderItemId"
+    get:
+      tags:
+        - ops
+      summary: List internal comments of an order item for Ops
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Internal comments in chronological order
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InternalComment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      tags:
+        - ops
+      summary: Create an internal comment as Ops
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateInternalCommentRequest"
+      responses:
+        "201":
+          description: Internal comment created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InternalComment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
 components:
   securitySchemes:
     BearerAuth:
@@ -727,7 +923,7 @@ components:
           example: ok
         version:
           type: string
-          example: 0.4.0
+          example: 0.5.0
 
     ErrorResponse:
       description: Business error raised by the application.
@@ -815,6 +1011,7 @@ components:
       enum:
         - buyer
         - seller
+        - ops
 
     Product:
       type: object
@@ -1107,6 +1304,18 @@ components:
         name:
           type: string
 
+    SellerSummary:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+
     ProductSummary:
       type: object
       required:
@@ -1242,6 +1451,150 @@ components:
           $ref: "#/components/schemas/BuyerSummary"
         order:
           $ref: "#/components/schemas/OrderSummary"
+
+    OpsOrderItemListItem:
+      type: object
+      required:
+        - order_item_id
+        - product
+        - quantity
+        - purchase_price
+        - status
+        - created_at
+        - buyer
+        - seller
+        - order_id
+      properties:
+        order_item_id:
+          type: string
+          format: uuid
+        product:
+          $ref: "#/components/schemas/ProductSummary"
+        quantity:
+          type: integer
+          minimum: 1
+        purchase_price:
+          $ref: "#/components/schemas/Price"
+        status:
+          $ref: "#/components/schemas/OrderItemStatus"
+        created_at:
+          type: string
+          format: date-time
+        buyer:
+          $ref: "#/components/schemas/BuyerSummary"
+        seller:
+          $ref: "#/components/schemas/SellerSummary"
+        order_id:
+          type: string
+          format: uuid
+
+    OpsOrderItemListResponse:
+      type: object
+      required:
+        - items
+        - page
+        - page_size
+        - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OpsOrderItemListItem"
+        page:
+          type: integer
+          minimum: 1
+        page_size:
+          type: integer
+          minimum: 1
+        total:
+          type: integer
+          minimum: 0
+
+    OpsOrderItemDetail:
+      type: object
+      required:
+        - id
+        - offer_id
+        - quantity
+        - purchase_price
+        - status
+        - created_at
+        - updated_at
+        - product
+        - buyer
+        - seller
+        - order
+      properties:
+        id:
+          type: string
+          format: uuid
+        offer_id:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          minimum: 1
+        purchase_price:
+          $ref: "#/components/schemas/Price"
+        status:
+          $ref: "#/components/schemas/OrderItemStatus"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        product:
+          $ref: "#/components/schemas/ProductDetailSummary"
+        buyer:
+          $ref: "#/components/schemas/BuyerSummary"
+        seller:
+          $ref: "#/components/schemas/SellerSummary"
+        order:
+          $ref: "#/components/schemas/OrderSummary"
+
+    InternalCommentAuthorType:
+      type: string
+      enum:
+        - ops
+        - seller
+
+    CreateInternalCommentRequest:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 2000
+
+    InternalComment:
+      type: object
+      required:
+        - id
+        - order_item_id
+        - author_id
+        - author_type
+        - content
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        order_item_id:
+          type: string
+          format: uuid
+        author_id:
+          type: string
+          format: uuid
+        author_type:
+          $ref: "#/components/schemas/InternalCommentAuthorType"
+        content:
+          type: string
+        created_at:
+          type: string
+          format: date-time
 
     ConversationStatus:
       type: string

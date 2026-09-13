@@ -1,8 +1,8 @@
 from fastapi.testclient import TestClient
 
-from app.auth.seed import BUYER_EMAIL, BUYER_ID, SELLER_A_EMAIL, SELLER_A_ID
+from app.auth.seed import BUYER_EMAIL, BUYER_ID, OPS_EMAIL, OPS_ID, SELLER_A_EMAIL, SELLER_A_ID
 from tests.conftest import TEST_SEED_PASSWORD
-from tests.integration.auth_helpers import buyer_headers, seller_a_headers
+from tests.integration.auth_helpers import buyer_headers, ops_headers, seller_a_headers
 
 
 def test_login_returns_token(catalog_client: TestClient) -> None:
@@ -42,6 +42,17 @@ def test_me_returns_seller(catalog_client: TestClient) -> None:
     assert body["name"] == "Loja A"
     assert body["role"] == "seller"
     assert body["seller_id"] == str(SELLER_A_ID)
+
+
+def test_me_returns_ops(catalog_client: TestClient) -> None:
+    response = catalog_client.get("/v1/auth/me", headers=ops_headers(catalog_client))
+    assert response.status_code == 200
+    body = response.json()
+    assert body["id"] == str(OPS_ID)
+    assert body["email"] == OPS_EMAIL
+    assert body["name"] == "Ops Demo"
+    assert body["role"] == "ops"
+    assert body["seller_id"] is None
 
 
 def test_me_without_token_returns_unauthorized(catalog_client: TestClient) -> None:

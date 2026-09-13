@@ -1,4 +1,4 @@
-"""Usuario autenticavel, com papel buyer ou seller."""
+"""Usuario autenticavel, com papel buyer, seller ou ops."""
 
 import uuid
 from enum import StrEnum
@@ -13,10 +13,11 @@ from app.database import Base
 class UserRole(StrEnum):
     BUYER = "buyer"
     SELLER = "seller"
+    OPS = "ops"
 
 
 class User(Base):
-    """Identidade de login. Seller mapeia 1:1 para um registro em sellers."""
+    """Identidade de login. Seller mapeia 1:1 para um registro em sellers; Ops nao."""
 
     __tablename__ = "users"
     __table_args__ = (UniqueConstraint("seller_id"),)

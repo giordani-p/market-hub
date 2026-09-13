@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from app.auth.seed import BUYER_EMAIL, SELLER_A_EMAIL, SELLER_B_EMAIL
+from app.auth.seed import BUYER_EMAIL, OPS_EMAIL, SELLER_A_EMAIL, SELLER_B_EMAIL
 from tests.conftest import TEST_SEED_PASSWORD
 
 
@@ -20,3 +20,7 @@ def seller_b_headers(client: TestClient) -> dict[str, str]:
 
 def buyer_headers(client: TestClient) -> dict[str, str]:
     return auth_header(client, BUYER_EMAIL)
+
+
+def ops_headers(client: TestClient) -> dict[str, str]:
+    return auth_header(client, OPS_EMAIL)
