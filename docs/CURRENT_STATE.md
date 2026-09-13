@@ -2,7 +2,7 @@
 
 - **Versao**: 0.8.0
 - **Fase**: P6.2 — COMPLETE (Notifications in-app sobre Jobs da P6.1)
-- **Commit de referencia**: working tree
+- **Commit de referencia**: 2e8e414
 
 ## Do que se trata
 
@@ -52,75 +52,75 @@ a fila Ops pode ficar ate cerca de 15 minutos defasada.
 
 ## Mapa do codigo
 
-| Caminho              | O que contem                                                                                 |
-| -------------------- | -------------------------------------------------------------------------------------------- |
-| `app/main.py`        | `create_app()`, handlers de erro e routers com prefixo de versao                             |
-| `app/core/config.py` | `Settings` e `get_settings()` com cache                                                      |
-| `app/core/errors.py` | `DomainError` e subclasses, inclusive `CheckoutRejectedError`                                |
-| `app/core/events.py` | dataclasses de evento e `InMemoryEventPublisher`                                             |
-| `app/database.py`    | `Base`, engine, `session_transaction()` (commit + publish)                                   |
-| `app/health.py`      | router e schema do health check                                                              |
-| `app/auth/`          | `User` (com `name` e `role` buyer/seller/ops), login, `/me`, JWT, seed                       |
-| `app/catalog/`       | modelos, schemas, CRUD de Produto/Oferta e seed de sellers                                   |
-| `app/orders/`        | checkout, listagem/detalhe do Seller, status e cancelamento                                  |
+| Caminho              | O que contem                                                                            |
+| -------------------- | --------------------------------------------------------------------------------------- |
+| `app/main.py`        | `create_app()`, handlers de erro e routers com prefixo de versao                        |
+| `app/core/config.py` | `Settings` e `get_settings()` com cache                                                 |
+| `app/core/errors.py` | `DomainError` e subclasses, inclusive `CheckoutRejectedError`                           |
+| `app/core/events.py` | dataclasses de evento e `InMemoryEventPublisher`                                        |
+| `app/database.py`    | `Base`, engine, `session_transaction()` (commit + publish)                              |
+| `app/health.py`      | router e schema do health check                                                         |
+| `app/auth/`          | `User` (com `name` e `role` buyer/seller/ops), login, `/me`, JWT, seed                  |
+| `app/catalog/`       | modelos, schemas, CRUD de Produto/Oferta e seed de sellers                              |
+| `app/orders/`        | checkout, listagem/detalhe do Seller, status e cancelamento                             |
 | `app/communication/` | Conversation, Messages, lazy close, batch de inatividade, PriorityPolicy e reconcilacao |
-| `app/support/`       | listagem/detalhe Ops, InternalComment, fila e override critical                              |
-| `app/jobs/`          | Job, registry, adapter SQS, Worker e enqueue                                                 |
-| `app/notifications/` | Notification in-app, canal, service, Job `NOTIFY_STATUS_CHANGE` e rotas                      |
-| `api/openapi.yaml`   | contrato da API escrito a mao                                                                |
-| `infra/local/`       | provisionamento LocalStack (filas, DLQ, EventBridge Rule)                                    |
-| `migrations/`        | Alembic `001`–`008` (notifications `008`)                                                    |
-| `tests/unit/`        | testes sem aplicacao montada                                                                 |
-| `tests/integration/` | testes via `TestClient` no Postgres de teste                                                 |
+| `app/support/`       | listagem/detalhe Ops, InternalComment, fila e override critical                         |
+| `app/jobs/`          | Job, registry, adapter SQS, Worker e enqueue                                            |
+| `app/notifications/` | Notification in-app, canal, service, Job `NOTIFY_STATUS_CHANGE` e rotas                 |
+| `api/openapi.yaml`   | contrato da API escrito a mao                                                           |
+| `infra/local/`       | provisionamento LocalStack (filas, DLQ, EventBridge Rule)                               |
+| `migrations/`        | Alembic `001`–`008` (notifications `008`)                                               |
+| `tests/unit/`        | testes sem aplicacao montada                                                            |
+| `tests/integration/` | testes via `TestClient` no Postgres de teste                                            |
 
 ## Contratos de API
 
 Rotas implementadas, todas sob o prefixo `/v1`:
 
-| Rota                                                | Resposta                                                     |
-| --------------------------------------------------- | ------------------------------------------------------------ |
-| `GET /v1/health`                                    | `HealthResponse` (`status`, `version`)                       |
-| `POST /v1/auth/login`                               | `TokenResponse`; `401 unauthorized` se a senha falhar        |
-| `GET /v1/auth/me`                                   | `User` autenticado, inclusive `name`                         |
-| `GET /v1/products`                                  | array de `Product`                                           |
-| `POST /v1/products`                                 | `201` + `Product`                                            |
-| `GET /v1/products/{product_id}`                     | `Product`                                                    |
-| `PATCH /v1/products/{product_id}`                   | `Product`                                                    |
-| `DELETE /v1/products/{product_id}`                  | `204`; `409` se o produto ainda tiver ofertas                |
-| `GET /v1/offers`                                    | array de `Offer`; filtro opcional `?seller_id=` (publico)    |
-| `POST /v1/offers`                                   | `201` + `Offer`; `seller_id` vem do JWT de seller            |
-| `GET /v1/offers/{offer_id}`                         | `Offer`                                                      |
-| `PATCH /v1/offers/{offer_id}`                       | `Offer` do seller autenticado                                |
-| `DELETE /v1/offers/{offer_id}`                      | `204`; `409` se houver order items                           |
-| `POST /v1/orders`                                   | checkout atomico; `201` + `Order` ou `409 checkout_rejected` |
-| `GET /v1/orders`                                    | orders do buyer autenticado                                  |
-| `GET /v1/orders/{order_id}`                         | `Order` do buyer autenticado                                 |
-| `GET /v1/order-items`                               | envelope paginado dos items do seller autenticado            |
-| `GET /v1/order-items/{item_id}`                     | detalhe do seller (`product`, `buyer`, `order`, `offer_id`)  |
-| `PATCH /v1/order-items/{item_id}`                   | avanca status no fluxo; mesmo status e idempotente           |
-| `POST /v1/order-items/{item_id}/cancel`             | cancela conforme o papel; cancel repetido e idempotente      |
-| `POST /v1/order-items/{item_id}/internal-comments`  | `201` InternalComment do Seller no proprio item              |
-| `GET /v1/order-items/{item_id}/internal-comments`   | array cronologico do Seller no proprio item                  |
-| `POST /v1/order-items/{item_id}/conversation`       | `201` nova ou `200` OPEN reutilizada                         |
-| `GET /v1/order-items/{item_id}/conversations`       | array por `last_interaction_at DESC`                         |
-| `GET /v1/conversations/{conversation_id}`           | Conversation do participante                                 |
-| `POST /v1/conversations/{conversation_id}/close`    | Seller fecha; ja `closed` responde `409`                     |
-| `POST /v1/conversations/{conversation_id}/messages` | `201` Message em Conversation `open`                         |
-| `GET /v1/conversations/{conversation_id}/messages`  | janela de 24h UTC (`from`, `to`, `has_older`)                |
-| `GET /v1/ops/order-items`                           | envelope paginado de todos os items (Ops)                    |
-| `GET /v1/ops/order-items/{item_id}`                 | detalhe Ops (`product`, `buyer`, `seller`, `order`)          |
-| `POST /v1/ops/order-items/{item_id}/internal-comments` | `201` InternalComment do Ops                              |
-| `GET /v1/ops/order-items/{item_id}/internal-comments`  | array cronologico (mesmo historico do Seller)             |
-| `GET /v1/ops/order-items/{item_id}/conversations`  | historico open+closed do item, com prioridade                |
-| `GET /v1/ops/conversations`                         | fila OPEN paginada por `effective_priority`                  |
-| `GET /v1/ops/conversations/{conversation_id}`       | Conversation Ops com prioridade persistida                   |
-| `POST /v1/ops/conversations/{conversation_id}/priority/refresh` | recalcula `calculated_priority`                     |
-| `POST /v1/ops/conversations/{conversation_id}/critical` | override `critical` + InternalComment                    |
-| `POST /v1/ops/conversations/{conversation_id}/critical/remove` | remove override                                     |
-| `GET /v1/notifications`                             | envelope paginado das Notifications do usuario       |
-| `GET /v1/notifications/unread-count`                | `{ unread_count }` do usuario autenticado            |
-| `PATCH /v1/notifications/{notification_id}/read`    | `200` Notification; alheia → `404`                   |
-| `PATCH /v1/notifications/read-all`                  | `204`; idempotente                                   |
+| Rota                                                            | Resposta                                                     |
+| --------------------------------------------------------------- | ------------------------------------------------------------ |
+| `GET /v1/health`                                                | `HealthResponse` (`status`, `version`)                       |
+| `POST /v1/auth/login`                                           | `TokenResponse`; `401 unauthorized` se a senha falhar        |
+| `GET /v1/auth/me`                                               | `User` autenticado, inclusive `name`                         |
+| `GET /v1/products`                                              | array de `Product`                                           |
+| `POST /v1/products`                                             | `201` + `Product`                                            |
+| `GET /v1/products/{product_id}`                                 | `Product`                                                    |
+| `PATCH /v1/products/{product_id}`                               | `Product`                                                    |
+| `DELETE /v1/products/{product_id}`                              | `204`; `409` se o produto ainda tiver ofertas                |
+| `GET /v1/offers`                                                | array de `Offer`; filtro opcional `?seller_id=` (publico)    |
+| `POST /v1/offers`                                               | `201` + `Offer`; `seller_id` vem do JWT de seller            |
+| `GET /v1/offers/{offer_id}`                                     | `Offer`                                                      |
+| `PATCH /v1/offers/{offer_id}`                                   | `Offer` do seller autenticado                                |
+| `DELETE /v1/offers/{offer_id}`                                  | `204`; `409` se houver order items                           |
+| `POST /v1/orders`                                               | checkout atomico; `201` + `Order` ou `409 checkout_rejected` |
+| `GET /v1/orders`                                                | orders do buyer autenticado                                  |
+| `GET /v1/orders/{order_id}`                                     | `Order` do buyer autenticado                                 |
+| `GET /v1/order-items`                                           | envelope paginado dos items do seller autenticado            |
+| `GET /v1/order-items/{item_id}`                                 | detalhe do seller (`product`, `buyer`, `order`, `offer_id`)  |
+| `PATCH /v1/order-items/{item_id}`                               | avanca status no fluxo; mesmo status e idempotente           |
+| `POST /v1/order-items/{item_id}/cancel`                         | cancela conforme o papel; cancel repetido e idempotente      |
+| `POST /v1/order-items/{item_id}/internal-comments`              | `201` InternalComment do Seller no proprio item              |
+| `GET /v1/order-items/{item_id}/internal-comments`               | array cronologico do Seller no proprio item                  |
+| `POST /v1/order-items/{item_id}/conversation`                   | `201` nova ou `200` OPEN reutilizada                         |
+| `GET /v1/order-items/{item_id}/conversations`                   | array por `last_interaction_at DESC`                         |
+| `GET /v1/conversations/{conversation_id}`                       | Conversation do participante                                 |
+| `POST /v1/conversations/{conversation_id}/close`                | Seller fecha; ja `closed` responde `409`                     |
+| `POST /v1/conversations/{conversation_id}/messages`             | `201` Message em Conversation `open`                         |
+| `GET /v1/conversations/{conversation_id}/messages`              | janela de 24h UTC (`from`, `to`, `has_older`)                |
+| `GET /v1/ops/order-items`                                       | envelope paginado de todos os items (Ops)                    |
+| `GET /v1/ops/order-items/{item_id}`                             | detalhe Ops (`product`, `buyer`, `seller`, `order`)          |
+| `POST /v1/ops/order-items/{item_id}/internal-comments`          | `201` InternalComment do Ops                                 |
+| `GET /v1/ops/order-items/{item_id}/internal-comments`           | array cronologico (mesmo historico do Seller)                |
+| `GET /v1/ops/order-items/{item_id}/conversations`               | historico open+closed do item, com prioridade                |
+| `GET /v1/ops/conversations`                                     | fila OPEN paginada por `effective_priority`                  |
+| `GET /v1/ops/conversations/{conversation_id}`                   | Conversation Ops com prioridade persistida                   |
+| `POST /v1/ops/conversations/{conversation_id}/priority/refresh` | recalcula `calculated_priority`                              |
+| `POST /v1/ops/conversations/{conversation_id}/critical`         | override `critical` + InternalComment                        |
+| `POST /v1/ops/conversations/{conversation_id}/critical/remove`  | remove override                                              |
+| `GET /v1/notifications`                                         | envelope paginado das Notifications do usuario               |
+| `GET /v1/notifications/unread-count`                            | `{ unread_count }` do usuario autenticado                    |
+| `PATCH /v1/notifications/{notification_id}/read`                | `200` Notification; alheia → `404`                           |
+| `PATCH /v1/notifications/read-all`                              | `204`; idempotente                                           |
 
 `GET /v1/order-items` aceita `page`, `page_size` (padrao 20, maximo 100),
 `status`, `from`, `to` e `order_item_id`. Ordenacao `created_at DESC`. Lista
@@ -212,14 +212,16 @@ O contrato `api/openapi.yaml` e a fonte da verdade e e escrito antes do codigo.
 ## Configuracao
 
 Lida de variaveis de ambiente, com `.env` local e `.env.example` como
-referencia: `ENVIRONMENT`, `API_PREFIX`, `DATABASE_URL`, `TEST_DATABASE_URL`,
+referencia: `ENVIRONMENT`, `API_PREFIX`, `CORS_ORIGINS`, `DATABASE_URL`, `TEST_DATABASE_URL`,
 `JWT_SECRET`, `JWT_EXPIRE_MINUTES`, `SEED_PASSWORD`,
 `CONVERSATION_INACTIVITY_HOURS`, `AWS_ENDPOINT_URL`, `AWS_REGION`,
 `JOBS_QUEUE_NAME`, `JOBS_DLQ_NAME`, `JOBS_VISIBILITY_TIMEOUT_SECONDS`,
 `JOBS_MAX_RECEIVE_COUNT`, `JOBS_WAIT_TIME_SECONDS`, `RECONCILE_PAGE_SIZE`,
 `JOBS_SCHEDULE_EXPRESSION`. `AWS_ENDPOINT_URL` local padrao e
 `http://localhost:4566`; o cliente SQS usa keys dummy nesse endpoint para nao
-herdar `~/.aws`. O `docker-compose.yml` consome
+herdar `~/.aws`. `CORS_ORIGINS` e uma lista separada por virgula (padrao
+`http://localhost:5173,http://localhost:3000`) e habilita `CORSMiddleware`
+para o frontend local. O `docker-compose.yml` consome
 `POSTGRES_USER`, `POSTGRES_PASSWORD` e `POSTGRES_DB`. Credenciais dummy do
 LocalStack tambem ficam no Compose do Worker. Nenhum valor de credencial real
 existe no repositorio.

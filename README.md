@@ -2,6 +2,8 @@
 
 Marketplace, construido com Python e FastAPI seguindo uma
 abordagem API First.
+#repositorio: https://github.com/giordani-p/market-hub 
+
 
 O foco principal da aplicacao e a jornada do Vendedor. A P3 materializa essa
 jornada na API: o Seller lista, detalha, avanca e cancela os proprios Order

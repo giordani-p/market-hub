@@ -1,6 +1,7 @@
 """Montagem da aplicacao FastAPI."""
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__, health
 from app.auth import routes as auth_routes
@@ -26,6 +27,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
 
     app.dependency_overrides[get_settings] = lambda: settings
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origins_list,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     register_exception_handlers(app)
     app.include_router(health.router, prefix=settings.api_prefix)
