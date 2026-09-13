@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.auth.models import User
 from app.catalog.models import Offer, Product, Seller
+from app.communication.models import Conversation
 from app.core.errors import ResourceNotFoundError
 from app.orders.models import Order, OrderItem
 
@@ -46,3 +47,15 @@ def load_ops_item_context(
     if row is None:
         raise ResourceNotFoundError("Order item not found")
     return row[0], row[1], row[2], row[3], row[4]
+
+
+def load_ops_conversation(
+    session: Session, conversation_id: UUID, *, for_update: bool = False
+) -> Conversation:
+    stmt = select(Conversation).where(Conversation.id == conversation_id)
+    if for_update:
+        stmt = stmt.with_for_update()
+    conversation = session.scalar(stmt)
+    if conversation is None:
+        raise ResourceNotFoundError("Conversation not found")
+    return conversation

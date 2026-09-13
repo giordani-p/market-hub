@@ -19,9 +19,23 @@ class CreateInternalCommentRequest(BaseModel):
     def strip_and_reject_blank(cls, value: str) -> str:
         stripped = value.strip()
         if not stripped:
-            raise ValueError("Comment content cannot be empty")
+            raise ValueError("Content cannot be empty")
         if len(stripped) > 2000:
-            raise ValueError("Comment content cannot exceed 2000 characters")
+            raise ValueError("Content cannot exceed 2000 characters")
+        return stripped
+
+
+class ApplyCriticalRequest(BaseModel):
+    justification: str = Field(min_length=1, max_length=2000)
+
+    @field_validator("justification")
+    @classmethod
+    def strip_and_reject_blank(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("Justification cannot be empty")
+        if len(stripped) > 2000:
+            raise ValueError("Justification cannot exceed 2000 characters")
         return stripped
 
 
@@ -72,3 +86,31 @@ class OpsOrderItemDetail(BaseModel):
     buyer: BuyerSummary
     seller: SellerSummary
     order: OrderSummary
+
+
+class OpsConversation(BaseModel):
+    id: UUID
+    order_item_id: UUID
+    reason: str
+    status: str
+    created_at: datetime
+    updated_at: datetime
+    last_interaction_at: datetime
+    calculated_priority: str
+    ops_override: str | None
+    effective_priority: str
+
+
+class OpsConversationQueueItem(OpsConversation):
+    seller: SellerSummary
+    product: ProductSummary
+    buyer: BuyerSummary
+    order_item_status: str
+    purchase_price: str
+
+
+class OpsConversationQueueResponse(BaseModel):
+    items: list[OpsConversationQueueItem]
+    page: int
+    page_size: int
+    total: int

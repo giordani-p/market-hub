@@ -9,9 +9,11 @@ from sqlalchemy.orm import Session
 
 from app.auth.models import User, UserRole
 from app.communication.models import Conversation, Message
+from app.communication.priority import calculate_priority
 from app.core.config import Settings
-from app.core.errors import ForbiddenError, InvalidTransitionError
+from app.core.errors import ForbiddenError, InvalidTransitionError, ResourceNotFoundError
 from app.core.events import ConversationClosed, ConversationCreated, MessageCreated, record_event
+from app.orders.models import OrderItem
 
 SYSTEM_CLOSE_MESSAGE = (
     "Esta conversa foi encerrada automaticamente após 5 dias sem novas mensagens. "
@@ -60,6 +62,9 @@ def get_or_create_conversation(
         return existing, False
 
     now = utcnow()
+    item = session.get(OrderItem, order_item_id)
+    if item is None:
+        raise ResourceNotFoundError("Order item not found")
     conversation = Conversation(
         order_item_id=order_item_id,
         reason=reason,
@@ -67,6 +72,14 @@ def get_or_create_conversation(
         created_at=now,
         updated_at=now,
         last_interaction_at=now,
+        calculated_priority=calculate_priority(
+            reason=reason,
+            item_status=item.status,
+            created_at=now,
+            purchase_price=item.purchase_price,
+            now=now,
+        ),
+        ops_override=None,
     )
     try:
         with session.begin_nested():
