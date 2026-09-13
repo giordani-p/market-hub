@@ -31,6 +31,24 @@ class OrderItemCancelled:
     restored_stock: bool
 
 
+@dataclass(frozen=True)
+class ConversationCreated:
+    conversation_id: UUID
+    order_item_id: UUID
+
+
+@dataclass(frozen=True)
+class MessageCreated:
+    message_id: UUID
+    conversation_id: UUID
+
+
+@dataclass(frozen=True)
+class ConversationClosed:
+    conversation_id: UUID
+    closed_by: str
+
+
 class InMemoryEventPublisher:
     """Publisher de processo unico, para testes e evolucao futura."""
 

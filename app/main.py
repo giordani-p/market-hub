@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from app import __version__, health
 from app.auth import routes as auth_routes
 from app.catalog import offers, products
+from app.communication.routes import conversation_router, item_router
 from app.core.config import Settings, get_settings
 from app.core.errors import register_exception_handlers
 from app.orders.routes import items_router, orders_router
@@ -17,7 +18,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app = FastAPI(
         title="Marketplace API",
         version=__version__,
-        description="Marketplace backend. Catalog and Order domains.",
+        description="Marketplace backend. Catalog, Order and Communication domains.",
         openapi_url="/openapi.json",
         docs_url="/docs",
     )
@@ -31,6 +32,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(offers.router, prefix=settings.api_prefix)
     app.include_router(orders_router, prefix=settings.api_prefix)
     app.include_router(items_router, prefix=settings.api_prefix)
+    app.include_router(item_router, prefix=settings.api_prefix)
+    app.include_router(conversation_router, prefix=settings.api_prefix)
 
     return app
 

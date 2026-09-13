@@ -303,9 +303,8 @@ def test_seller_cannot_operate_foreign_item(catalog_client: TestClient) -> None:
     assert cancel.status_code == 404
 
 
-def test_openapi_has_no_communication_paths(catalog_client: TestClient) -> None:
+def test_openapi_has_no_dashboard_paths(catalog_client: TestClient) -> None:
     paths = catalog_client.get("/openapi.json").json()["paths"]
     assert "/v1/order-items/{item_id}" in paths
     assert "get" in paths["/v1/order-items/{item_id}"]
-    assert not any("conversation" in path or "message" in path for path in paths)
     assert not any("dashboard" in path for path in paths)

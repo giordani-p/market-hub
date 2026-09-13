@@ -79,8 +79,8 @@ def catalog_client(settings: Settings, test_engine: Engine) -> Iterator[TestClie
     with session_factory() as session:
         session.execute(
             text(
-                "TRUNCATE order_items, orders, users, offers, products, sellers "
-                "RESTART IDENTITY CASCADE"
+                "TRUNCATE messages, conversations, order_items, orders, users, "
+                "offers, products, sellers RESTART IDENTITY CASCADE"
             )
         )
         seed_all(session, settings.seed_password)

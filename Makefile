@@ -1,4 +1,4 @@
-.PHONY: install lint format test run db-up db-down migrate revision seed
+.PHONY: install lint format test run db-up db-down migrate revision seed close-inactive
 
 install:
 	uv sync --extra dev
@@ -33,3 +33,6 @@ migrate:
 # Uso: make revision m="create catalog tables"
 revision:
 	uv run alembic revision --autogenerate -m "$(m)"
+
+close-inactive:
+	uv run python -m app.communication.close_inactive
