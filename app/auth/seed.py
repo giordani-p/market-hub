@@ -31,6 +31,7 @@ def seed_users(session: Session, password: str | None = None) -> None:
         User(
             id=SELLER_A_USER_ID,
             email=SELLER_A_EMAIL,
+            name="Loja A",
             password_hash=password_hash,
             role=UserRole.SELLER,
             seller_id=SELLER_A_ID,
@@ -38,6 +39,7 @@ def seed_users(session: Session, password: str | None = None) -> None:
         User(
             id=SELLER_B_USER_ID,
             email=SELLER_B_EMAIL,
+            name="Loja B",
             password_hash=password_hash,
             role=UserRole.SELLER,
             seller_id=SELLER_B_ID,
@@ -45,6 +47,7 @@ def seed_users(session: Session, password: str | None = None) -> None:
         User(
             id=BUYER_ID,
             email=BUYER_EMAIL,
+            name="Buyer Demo",
             password_hash=password_hash,
             role=UserRole.BUYER,
             seller_id=None,

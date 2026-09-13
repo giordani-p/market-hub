@@ -2,11 +2,15 @@
 
 from datetime import datetime
 from decimal import Decimal
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.catalog.schemas import Price, format_price
+
+OrderItemStatus = Literal["placed", "preparing", "in_transit", "delivered", "cancelled"]
+OrderItemForwardStatus = Literal["placed", "preparing", "in_transit", "delivered"]
 
 
 class CheckoutItem(BaseModel):
@@ -27,7 +31,7 @@ class CheckoutRequest(BaseModel):
 
 
 class OrderItemStatusUpdate(BaseModel):
-    status: str = Field(pattern=r"^(placed|preparing|in_transit|delivered|cancelled)$")
+    status: OrderItemForwardStatus
 
 
 class OrderItemResponse(BaseModel):
@@ -58,3 +62,55 @@ class OrderResponse(BaseModel):
     items: list[OrderItemResponse]
     created_at: datetime
     updated_at: datetime
+
+
+class BuyerSummary(BaseModel):
+    id: UUID
+    name: str
+
+
+class ProductSummary(BaseModel):
+    id: UUID
+    name: str
+
+
+class ProductDetailSummary(BaseModel):
+    id: UUID
+    name: str
+    description: str | None
+
+
+class OrderSummary(BaseModel):
+    id: UUID
+    created_at: datetime
+
+
+class OrderItemListItem(BaseModel):
+    order_item_id: UUID
+    product: ProductSummary
+    quantity: int
+    purchase_price: str
+    status: str
+    created_at: datetime
+    buyer: BuyerSummary
+    order_id: UUID
+
+
+class OrderItemListResponse(BaseModel):
+    items: list[OrderItemListItem]
+    page: int
+    page_size: int
+    total: int
+
+
+class OrderItemDetail(BaseModel):
+    id: UUID
+    offer_id: UUID
+    quantity: int
+    purchase_price: str
+    status: str
+    created_at: datetime
+    updated_at: datetime
+    product: ProductDetailSummary
+    buyer: BuyerSummary
+    order: OrderSummary
