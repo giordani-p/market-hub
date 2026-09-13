@@ -1,8 +1,8 @@
 # Estado atual do projeto
 
 - **Versao**: 0.6.0
-- **Fase**: P5.2 (concluida) — PriorityPolicy e fila Ops
-- **Commit de referencia**: 817ebd3
+- **Fase**: P5 — COMPLETE (P5.3 verificacao)
+- **Commit de referencia**: 8637a57
 
 ## Do que se trata
 
@@ -15,8 +15,10 @@ sobre os proprios Order Items. A fase P4, especificada em
 pelo Order Item. A fase P5.1, especificada em `docs/P5.1_Support_Ops.md`,
 adiciona o papel Ops e InternalComment. A fase P5.2, especificada em
 `docs/P5.2_Priority_Policy.md`, adiciona prioridade na Conversation e a fila
-Ops. O plano da fase nao deve ser copiado para ca: este documento descreve o
-que **existe hoje**.
+Ops. A fase P5.3, especificada em `docs/P5.3_Closure_Verification.md`, fecha e
+verifica a P5 sem novas capacidades de produto. O resultado do fechamento esta
+em `docs/P5.3_Resultado.md`. O plano da fase nao deve ser
+copiado para ca: este documento descreve o que **existe hoje**.
 
 ## Arquitetura
 
@@ -208,6 +210,8 @@ P6 — recalculo automatico, notificacoes, SLA e transcript Ops. Sem frontend.
 
 ## Historico de versoes
 
+- **0.6.0** — P5.3: fechamento e verificacao da P5 (matriz de testes Ops e
+  prioridade, jornada integrada, rebuild das migrations 005/006). P5 completa.
 - **0.6.0** — PriorityPolicy V1 na Conversation, fila Ops de Conversations OPEN,
   refresh manual, override `critical` com InternalComment.
 - **0.5.0** — Support/Ops: papel `ops`, namespace `/v1/ops` com listagem global

@@ -49,13 +49,22 @@ def load_ops_item_context(
     return row[0], row[1], row[2], row[3], row[4]
 
 
-def load_ops_conversation(
-    session: Session, conversation_id: UUID, *, for_update: bool = False
-) -> Conversation:
+def ops_conversation_statement(
+    conversation_id: UUID, *, for_update: bool
+) -> Select[tuple[Conversation]]:
+    """Monta o SELECT da Conversation no escopo de Ops."""
     stmt = select(Conversation).where(Conversation.id == conversation_id)
     if for_update:
         stmt = stmt.with_for_update()
-    conversation = session.scalar(stmt)
+    return stmt
+
+
+def load_ops_conversation(
+    session: Session, conversation_id: UUID, *, for_update: bool = False
+) -> Conversation:
+    conversation = session.scalar(
+        ops_conversation_statement(conversation_id, for_update=for_update)
+    )
     if conversation is None:
         raise ResourceNotFoundError("Conversation not found")
     return conversation

@@ -1,10 +1,22 @@
 from uuid import uuid4
 
+import pytest
+from sqlalchemy import Engine
+from sqlalchemy.orm import sessionmaker
+
 from app.auth.models import User, UserRole
 from app.auth.passwords import hash_password, verify_password
 from app.auth.tokens import create_access_token, decode_access_token
 from app.core.config import Settings
-from app.core.events import PENDING_KEY, OrderCreated, publish_pending, publisher, record_event
+from app.core.events import (
+    PENDING_KEY,
+    InternalCommentCreated,
+    OrderCreated,
+    publish_pending,
+    publisher,
+    record_event,
+)
+from app.database import session_transaction
 
 
 class _FakeSession:
@@ -42,3 +54,17 @@ def test_events_are_not_published_until_commit_hook() -> None:
     publish_pending(session)  # type: ignore[arg-type]
     assert len(publisher.events) == 1
     assert PENDING_KEY not in session.info
+
+
+def test_rollback_does_not_publish_internal_comment_created(test_engine: Engine) -> None:
+    factory = sessionmaker(bind=test_engine, autoflush=False, expire_on_commit=False)
+    gen = session_transaction(factory)
+    session = next(gen)
+    record_event(
+        session,
+        InternalCommentCreated(comment_id=uuid4(), order_item_id=uuid4()),
+    )
+    assert publisher.events == []
+    with pytest.raises(RuntimeError, match="boom"):
+        gen.throw(RuntimeError("boom"))
+    assert publisher.events == []

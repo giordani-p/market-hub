@@ -17,9 +17,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
 
     app = FastAPI(
-        title="Marketplace API",
+        title="Market Hub API",
         version=__version__,
-        description="Marketplace backend. Catalog, Order, Communication and Support/Ops domains.",
+        description="Catalog, Orders, Communication and Support/Ops domains.",
         openapi_url="/openapi.json",
         docs_url="/docs",
     )

@@ -8,8 +8,10 @@ jornada na API: o Seller lista, detalha, avanca e cancela os proprios Order
 Items. A P4 adiciona Communication entre Buyer e Seller por Order Item.
 A P5.1 adiciona o papel Ops e InternalComment operacional.
 A P5.2 adiciona prioridade na Conversation e a fila Ops.
+A P5.3, especificada em [`docs/P5.3_Closure_Verification.md`](docs/P5.3_Closure_Verification.md),
+fecha e verifica a P5.
 
-## Escopo atual (P5.2)
+## Escopo atual (P5)
 
 A v0 implementou o **Catalogo**. A P2 adicionou **Order**, JWT e estoque
 atomico. A P3, especificada em [`docs/P3_Seller_Journey.md`](docs/P3_Seller_Journey.md),
@@ -18,7 +20,8 @@ expoe a operacao do Seller sobre Order Items. A P4, especificada em
 Messages. A P5.1, especificada em [`docs/P5.1_Support_Ops.md`](docs/P5.1_Support_Ops.md),
 adiciona Ops em `/v1/ops` e InternalComment. A P5.2, especificada em
 [`docs/P5.2_Priority_Policy.md`](docs/P5.2_Priority_Policy.md), calcula prioridade
-e expoe a fila de Conversations OPEN. Sem frontend, realtime, dashboard, notificacoes ou recalculo automatico.
+e expoe a fila de Conversations OPEN. A P5.3 confirma o fechamento da P5.
+Sem frontend, realtime, dashboard, notificacoes ou recalculo automatico.
 
 O estado atual do codigo esta em [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md).
 
