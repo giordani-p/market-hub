@@ -37,6 +37,8 @@ class Conversation(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     last_interaction_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    calculated_priority: Mapped[str] = mapped_column(String(20), nullable=False, default="low")
+    ops_override: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
 
 class Message(Base):

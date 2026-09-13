@@ -1,8 +1,8 @@
 # Estado atual do projeto
 
-- **Versao**: 0.5.0
-- **Fase**: P5.1 (concluida) — Support/Ops e InternalComment
-- **Commit de referencia**: 31b4236
+- **Versao**: 0.6.0
+- **Fase**: P5.2 (concluida) — PriorityPolicy e fila Ops
+- **Commit de referencia**: 817ebd3
 
 ## Do que se trata
 
@@ -13,8 +13,10 @@ especificada em `docs/P3_Seller_Journey.md`, materializa a operacao do Seller
 sobre os proprios Order Items. A fase P4, especificada em
 `docs/P4_Communication.md`, adiciona Conversation e Messages contextualizadas
 pelo Order Item. A fase P5.1, especificada em `docs/P5.1_Support_Ops.md`,
-adiciona o papel Ops e InternalComment. O plano da fase nao deve ser copiado
-para ca: este documento descreve o que **existe hoje**.
+adiciona o papel Ops e InternalComment. A fase P5.2, especificada em
+`docs/P5.2_Priority_Policy.md`, adiciona prioridade na Conversation e a fila
+Ops. O plano da fase nao deve ser copiado para ca: este documento descreve o
+que **existe hoje**.
 
 ## Arquitetura
 
@@ -44,10 +46,10 @@ ha bus, Outbox, Kafka nem Redis.
 | `app/auth/`          | `User` (com `name` e `role` buyer/seller/ops), login, `/me`, JWT, seed                       |
 | `app/catalog/`       | modelos, schemas, CRUD de Produto/Oferta e seed de sellers                                   |
 | `app/orders/`        | checkout, listagem/detalhe do Seller, status e cancelamento                                  |
-| `app/communication/` | Conversation, Messages, lazy close e batch de inatividade                                    |
-| `app/support/`       | listagem/detalhe Ops, InternalComment (Seller e Ops)                                         |
+| `app/communication/` | Conversation, Messages, lazy close, batch de inatividade e PriorityPolicy                    |
+| `app/support/`       | listagem/detalhe Ops, InternalComment, fila e override critical                              |
 | `api/openapi.yaml`   | contrato da API escrito a mao                                                                |
-| `migrations/`        | Alembic: Catalogo (`001`), auth/orders (`002`), `users.name` (`003`), communication (`004`) e support (`005`) |
+| `migrations/`        | Alembic `001`–`006` (support `005`, prioridade na Conversation `006`)                        |
 | `tests/unit/`        | testes sem aplicacao montada                                                                 |
 | `tests/integration/` | testes via `TestClient` no Postgres de teste                                                 |
 
@@ -89,12 +91,21 @@ Rotas implementadas, todas sob o prefixo `/v1`:
 | `GET /v1/ops/order-items/{item_id}`                 | detalhe Ops (`product`, `buyer`, `seller`, `order`)          |
 | `POST /v1/ops/order-items/{item_id}/internal-comments` | `201` InternalComment do Ops                              |
 | `GET /v1/ops/order-items/{item_id}/internal-comments`  | array cronologico (mesmo historico do Seller)             |
+| `GET /v1/ops/order-items/{item_id}/conversations`  | historico open+closed do item, com prioridade                |
+| `GET /v1/ops/conversations`                         | fila OPEN paginada por `effective_priority`                  |
+| `GET /v1/ops/conversations/{conversation_id}`       | Conversation Ops com prioridade persistida                   |
+| `POST /v1/ops/conversations/{conversation_id}/priority/refresh` | recalcula `calculated_priority`                     |
+| `POST /v1/ops/conversations/{conversation_id}/critical` | override `critical` + InternalComment                    |
+| `POST /v1/ops/conversations/{conversation_id}/critical/remove` | remove override                                     |
 
 `GET /v1/order-items` aceita `page`, `page_size` (padrao 20, maximo 100),
 `status`, `from`, `to` e `order_item_id`. Ordenacao `created_at DESC`. Lista
 vazia responde `200` com `items`, `page`, `page_size` e `total`.
 `GET /v1/ops/order-items` usa os mesmos parametros e acrescenta `seller_id`.
 Cada item da listagem Ops inclui `seller` (`id`, `name` da tabela `sellers`).
+`GET /v1/ops/conversations` lista so `open`, ordena `critical > high > medium > low`
+e depois `last_interaction_at DESC`, e aceita `seller_id`, `order_item_id` e
+`effective_priority`. Envelope `items`/`page`/`page_size`/`total`.
 
 `GET /v1/conversations/{id}/messages` aceita `before` (date-time com timezone,
 nao futuro). Sem `before`, retorna as Messages das ultimas 24h.
@@ -108,8 +119,9 @@ Seller em item de outro Seller recebe `404 resource_not_found`. Buyer nas
 rotas de listagem/detalhe do Seller recebe `403`. Sem token, `401`. Participante
 sem relacao com Conversation ou Order Item recebe `404`. Buyer em
 `POST .../close` recebe `403`. Buyer e Seller em `/v1/ops/*` recebem `403`.
-Ops nas rotas exclusivas de Seller/Buyer recebe `403`; em Conversation/Message,
-`404` (nao e participante).
+Ops nas rotas exclusivas de Seller/Buyer recebe `403`; em Conversation/Message
+de participante, `404`. Ops le metadados de Conversation em `/v1/ops`, sem
+Messages.
 
 Nao existe `POST /v1/auth/register`. Usuarios existem so via seed.
 
@@ -123,7 +135,7 @@ O contrato `api/openapi.yaml` e a fonte da verdade e e escrito antes do codigo.
 - Preco como string decimal com duas casas (`"299.00"`), mapeado para `Decimal`
   e `NUMERIC(12,2)`.
 - Listagens retornam array simples, sem envelope nem paginacao, **exceto**
-  `GET /v1/order-items`, `GET /v1/ops/order-items` e
+  `GET /v1/order-items`, `GET /v1/ops/order-items`, `GET /v1/ops/conversations` e
   `GET /v1/conversations/{id}/messages`.
 - Exclusao bem-sucedida responde `204` sem corpo.
 - Validacao de campo fica com o Pydantic e responde `422`.
@@ -150,7 +162,11 @@ O contrato `api/openapi.yaml` e a fonte da verdade e e escrito antes do codigo.
   fecha com Message sistemica, via lazy no acesso ou `make close-inactive`.
 - Ops opera so em `/v1/ops`. InternalComment e texto imutavel (maximo 2000)
   entre Seller e Ops, no Order Item, independente de Conversation. Autor
-  `seller` ou `ops`. Ops nao le Conversation nesta fase.
+  `seller` ou `ops`.
+- Conversation persiste `calculated_priority` (`low`/`medium`/`high`) na criacao
+  e `ops_override` (`null`/`critical`). `effective_priority` e derivado.
+  Recalculo HTTP e `POST .../priority/refresh`. A fila Ops lista Conversations
+  `open` pelo snapshot persistido. Ops nao le Messages.
 
 ## Configuracao
 
@@ -177,8 +193,8 @@ PostgreSQL 16 em container local, SQLAlchemy 2.0 e Alembic. Tabelas `sellers`,
 
 ## O que ainda nao existe
 
-- PriorityPolicy, `calculated_priority`, override `CRITICAL` e recalculo.
-- Ops lendo Conversation Buyer-Seller.
+- Recalculo automatico de prioridade (eventos, rotina, GET).
+- Ops lendo Messages Buyer-Seller.
 - Pipeline de CI e qualquer artefato de deploy.
 - Cadastro publico de usuarios, refresh token e IdP.
 - Carrinho persistido, pagamentos, entrega, frontend.
@@ -188,11 +204,12 @@ PostgreSQL 16 em container local, SQLAlchemy 2.0 e Alembic. Tabelas `sellers`,
 
 ## Proxima etapa
 
-P5.2 — PriorityPolicy na Conversation, com rotas em `/v1/ops` e justificativa
-via InternalComment. Sem antecipar recalculo automatico nem frontend.
+P6 — recalculo automatico, notificacoes, SLA e transcript Ops. Sem frontend.
 
 ## Historico de versoes
 
+- **0.6.0** — PriorityPolicy V1 na Conversation, fila Ops de Conversations OPEN,
+  refresh manual, override `critical` com InternalComment.
 - **0.5.0** — Support/Ops: papel `ops`, namespace `/v1/ops` com listagem global
   de Order Items, InternalComment imutavel compartilhado com o Seller, seed
   Ops Demo e evento pos-commit.
