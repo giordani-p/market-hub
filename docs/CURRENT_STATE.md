@@ -1,8 +1,8 @@
 # Estado atual do projeto
 
-- **Versao**: 0.3.0
-- **Fase**: P3 (concluida) — jornada operacional do Seller sobre Order Items
-- **Commit de referencia**: c4f86b3
+- **Versao**: 0.4.0
+- **Fase**: P4 (concluida) — Communication entre Buyer e Seller por Order Item
+- **Commit de referencia**: pendente (entrega local da P4)
 
 ## Do que se trata
 
@@ -10,8 +10,10 @@ Backend de um Marketplace em Python com FastAPI. A fase P1 cobre o dominio de
 Catalogo (`docs/p1_catalog.md`). A fase P2, especificada em `docs/p2_order.md`,
 cobre pedidos, estoque na efetivacao e autenticacao minima. A fase P3,
 especificada em `docs/P3_Seller_Journey.md`, materializa a operacao do Seller
-sobre os proprios Order Items. O plano da fase nao deve ser copiado para ca:
-este documento descreve o que **existe hoje**.
+sobre os proprios Order Items. A fase P4, especificada em
+`docs/P4_Communication.md`, adiciona Conversation e Messages contextualizadas
+pelo Order Item. O plano da fase nao deve ser copiado para ca: este documento
+descreve o que **existe hoje**.
 
 ## Arquitetura
 
@@ -23,7 +25,8 @@ em `app/`.
 em memoria e traducao para HTTP.
 
 Eventos de dominio (`OrderCreated`, `OrderItemStatusChanged`,
-`OrderItemCancelled`) sao acumulados na transacao e publicados no
+`OrderItemCancelled`, `ConversationCreated`, `MessageCreated`,
+`ConversationClosed`) sao acumulados na transacao e publicados no
 `InMemoryEventPublisher` somente apos o `commit` da sessao. Nao ha bus,
 Outbox, Kafka nem Redis.
 
@@ -40,8 +43,9 @@ Outbox, Kafka nem Redis.
 | `app/auth/` | `User` (com `name`), login, `/me`, JWT, hash de senha e seed de users |
 | `app/catalog/` | modelos, schemas, CRUD de Produto/Oferta e seed de sellers |
 | `app/orders/` | checkout, listagem/detalhe do Seller, status e cancelamento |
+| `app/communication/` | Conversation, Messages, lazy close e batch de inatividade |
 | `api/openapi.yaml` | contrato da API escrito a mao |
-| `migrations/` | Alembic: Catalogo (`001`), auth/orders (`002`) e `users.name` (`003`) |
+| `migrations/` | Alembic: Catalogo (`001`), auth/orders (`002`), `users.name` (`003`) e communication (`004`) |
 | `tests/unit/` | testes sem aplicacao montada |
 | `tests/integration/` | testes via `TestClient` no Postgres de teste |
 
@@ -71,10 +75,19 @@ Rotas implementadas, todas sob o prefixo `/v1`:
 | `GET /v1/order-items/{item_id}` | detalhe do seller (`product`, `buyer`, `order`, `offer_id`) |
 | `PATCH /v1/order-items/{item_id}` | avanca status no fluxo; mesmo status e idempotente |
 | `POST /v1/order-items/{item_id}/cancel` | cancela conforme o papel; cancel repetido e idempotente |
+| `POST /v1/order-items/{item_id}/conversation` | `201` nova ou `200` OPEN reutilizada |
+| `GET /v1/order-items/{item_id}/conversations` | array por `last_interaction_at DESC` |
+| `GET /v1/conversations/{conversation_id}` | Conversation do participante |
+| `POST /v1/conversations/{conversation_id}/close` | Seller fecha; ja `closed` responde `409` |
+| `POST /v1/conversations/{conversation_id}/messages` | `201` Message em Conversation `open` |
+| `GET /v1/conversations/{conversation_id}/messages` | janela de 24h UTC (`from`, `to`, `has_older`) |
 
 `GET /v1/order-items` aceita `page`, `page_size` (padrao 20, maximo 100),
 `status`, `from`, `to` e `order_item_id`. Ordenacao `created_at DESC`. Lista
 vazia responde `200` com `items`, `page`, `page_size` e `total`.
+
+`GET /v1/conversations/{id}/messages` aceita `before` (date-time com timezone,
+nao futuro). Sem `before`, retorna as Messages das ultimas 24h.
 
 Erros de negocio respondem com `ErrorResponse` (`code`, `message`):
 `resource_not_found` (404), `resource_in_use` e `invalid_transition` (409),
@@ -82,7 +95,9 @@ Erros de negocio respondem com `ErrorResponse` (`code`, `message`):
 `CheckoutRejected` (`code: checkout_rejected`, `items` com `reason`).
 
 Seller em item de outro Seller recebe `404 resource_not_found`. Buyer nas
-rotas de listagem/detalhe do Seller recebe `403`. Sem token, `401`.
+rotas de listagem/detalhe do Seller recebe `403`. Sem token, `401`. Participante
+sem relacao com Conversation ou Order Item recebe `404`. Buyer em
+`POST .../close` recebe `403`.
 
 Nao existe `POST /v1/auth/register`. Usuarios existem so via seed.
 
@@ -96,7 +111,7 @@ O contrato `api/openapi.yaml` e a fonte da verdade e e escrito antes do codigo.
 - Preco como string decimal com duas casas (`"299.00"`), mapeado para `Decimal`
   e `NUMERIC(12,2)`.
 - Listagens retornam array simples, sem envelope nem paginacao, **exceto**
-  `GET /v1/order-items`.
+  `GET /v1/order-items` e `GET /v1/conversations/{id}/messages`.
 - Exclusao bem-sucedida responde `204` sem corpo.
 - Validacao de campo fica com o Pydantic e responde `422`.
 - `offers.product_id` e `offers.seller_id` usam `ON DELETE RESTRICT`. `order_items.offer_id`
@@ -113,20 +128,28 @@ O contrato `api/openapi.yaml` e a fonte da verdade e e escrito antes do codigo.
   `in_transit` recompõe estoque.
 - Mutacoes de Order Item relêem o registro com `SELECT ... FOR UPDATE`.
 - Users de seed: Loja A, Loja B e Buyer Demo, com `name`. Senha em `SEED_PASSWORD`.
+- Conversation: uma `open` por Order Item (indice unico parcial). Status
+  `open`/`closed`. Motivos: `atraso`, `troca`, `devolucao`, `reclamacao`,
+  `suporte`, `elogio`, `outros`.
+- Messages sao texto imutavel (maximo 2000). Autor `buyer`, `seller` ou `system`.
+- Close manual e so do Seller e nao cria Message sistemica. Inatividade (120h)
+  fecha com Message sistemica, via lazy no acesso ou `make close-inactive`.
 
 ## Configuracao
 
 Lida de variaveis de ambiente, com `.env` local e `.env.example` como
 referencia: `ENVIRONMENT`, `API_PREFIX`, `DATABASE_URL`, `TEST_DATABASE_URL`,
-`JWT_SECRET`, `JWT_EXPIRE_MINUTES`, `SEED_PASSWORD`. O `docker-compose.yml`
-consome `POSTGRES_USER`, `POSTGRES_PASSWORD` e `POSTGRES_DB`. Nenhum valor de
+`JWT_SECRET`, `JWT_EXPIRE_MINUTES`, `SEED_PASSWORD`,
+`CONVERSATION_INACTIVITY_HOURS`. O `docker-compose.yml` consome
+`POSTGRES_USER`, `POSTGRES_PASSWORD` e `POSTGRES_DB`. Nenhum valor de
 credencial existe no repositorio.
 
 ## Persistencia
 
 PostgreSQL 16 em container local, SQLAlchemy 2.0 e Alembic. Tabelas `sellers`,
-`products`, `offers`, `users` (com `name`), `orders` e `order_items`. Testes
-usam `TEST_DATABASE_URL`. `make test` exige o Postgres no ar.
+`products`, `offers`, `users` (com `name`), `orders`, `order_items`,
+`conversations` e `messages`. Testes usam `TEST_DATABASE_URL`. `make test`
+exige o Postgres no ar.
 
 ## Convencoes
 
@@ -140,16 +163,19 @@ usam `TEST_DATABASE_URL`. `make test` exige o Postgres no ar.
 - Pipeline de CI e qualquer artefato de deploy.
 - Cadastro publico de usuarios, refresh token e IdP.
 - Carrinho persistido, pagamentos, entrega, frontend.
-- Communication (Conversation/Messages), dashboard/KPIs, WebSocket/SSE.
+- Inbox global, dashboard/KPIs, WebSocket/SSE, notificacoes.
 - Event bus, Outbox, Kafka, Redis ou observabilidade.
 - Soft delete ou diferenciacao entre excluir e deixar de disponibilizar.
 
 ## Proxima etapa
 
-Frontend, Communication ou dashboard — sem antecipar no backend.
+Frontend ou dashboard — sem antecipar no backend.
 
 ## Historico de versoes
 
+- **0.4.0** — Communication: Conversation por Order Item, Messages imutaveis,
+  uma OPEN por item, close manual do Seller, encerramento por inatividade
+  (lazy + batch) e eventos pos-commit.
 - **0.3.0** — jornada do Seller: listagem paginada com filtros, detalhe do
   Order Item, `users.name`, isolamento 404, PATCH/cancel idempotentes e
   `SELECT FOR UPDATE` nas mutacoes.

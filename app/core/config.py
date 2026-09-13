@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     jwt_secret: str = ""
     jwt_expire_minutes: int = 60
     seed_password: str = ""
+    conversation_inactivity_hours: int = 120
 
 
 @lru_cache

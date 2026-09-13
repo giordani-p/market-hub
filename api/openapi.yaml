@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: Market Hub API
-  description: Market Hub backend. Catalog and Order domains.
-  version: 0.3.0
+  description: Market Hub backend. Catalog, Order and Communication domains.
+  version: 0.4.0
 paths:
   /v1/health:
     get:
@@ -477,6 +477,168 @@ paths:
         "409":
           $ref: "#/components/responses/Conflict"
 
+  /v1/order-items/{item_id}/conversation:
+    parameters:
+      - $ref: "#/components/parameters/OrderItemId"
+    post:
+      tags:
+        - conversations
+      summary: Open or reuse the OPEN conversation for an order item
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateConversationRequest"
+      responses:
+        "200":
+          description: Existing OPEN conversation reused
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversation"
+        "201":
+          description: Conversation created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /v1/order-items/{item_id}/conversations:
+    parameters:
+      - $ref: "#/components/parameters/OrderItemId"
+    get:
+      tags:
+        - conversations
+      summary: List conversations of an order item
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Conversations ordered by last interaction
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Conversation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/conversations/{conversation_id}:
+    parameters:
+      - $ref: "#/components/parameters/ConversationId"
+    get:
+      tags:
+        - conversations
+      summary: Get a conversation
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Conversation found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/conversations/{conversation_id}/close:
+    parameters:
+      - $ref: "#/components/parameters/ConversationId"
+    post:
+      tags:
+        - conversations
+      summary: Close a conversation (seller only)
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Conversation closed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /v1/conversations/{conversation_id}/messages:
+    parameters:
+      - $ref: "#/components/parameters/ConversationId"
+    get:
+      tags:
+        - conversations
+      summary: List messages in a 24h window
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: before
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Exclusive upper bound (timezone-aware, not in the future)
+      responses:
+        "200":
+          description: Messages in the requested window
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+    post:
+      tags:
+        - conversations
+      summary: Send a message
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMessageRequest"
+      responses:
+        "201":
+          description: Message created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
 components:
   securitySchemes:
     BearerAuth:
@@ -508,6 +670,13 @@ components:
         format: uuid
     OrderItemId:
       name: item_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ConversationId:
+      name: conversation_id
       in: path
       required: true
       schema:
@@ -558,7 +727,7 @@ components:
           example: ok
         version:
           type: string
-          example: 0.3.0
+          example: 0.4.0
 
     ErrorResponse:
       description: Business error raised by the application.
@@ -1073,3 +1242,126 @@ components:
           $ref: "#/components/schemas/BuyerSummary"
         order:
           $ref: "#/components/schemas/OrderSummary"
+
+    ConversationStatus:
+      type: string
+      enum:
+        - open
+        - closed
+
+    ConversationReason:
+      type: string
+      enum:
+        - atraso
+        - troca
+        - devolucao
+        - reclamacao
+        - suporte
+        - elogio
+        - outros
+
+    MessageAuthorType:
+      type: string
+      enum:
+        - buyer
+        - seller
+        - system
+
+    CreateConversationRequest:
+      type: object
+      required:
+        - reason
+      properties:
+        reason:
+          $ref: "#/components/schemas/ConversationReason"
+
+    Conversation:
+      type: object
+      required:
+        - id
+        - order_item_id
+        - reason
+        - status
+        - created_at
+        - updated_at
+        - last_interaction_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        order_item_id:
+          type: string
+          format: uuid
+        reason:
+          $ref: "#/components/schemas/ConversationReason"
+        status:
+          $ref: "#/components/schemas/ConversationStatus"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        last_interaction_at:
+          type: string
+          format: date-time
+
+    CreateMessageRequest:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 2000
+
+    Message:
+      type: object
+      required:
+        - id
+        - conversation_id
+        - author_type
+        - author_user_id
+        - content
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        conversation_id:
+          type: string
+          format: uuid
+        author_type:
+          $ref: "#/components/schemas/MessageAuthorType"
+        author_user_id:
+          type:
+            - string
+            - "null"
+          format: uuid
+        content:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    MessageListResponse:
+      type: object
+      required:
+        - items
+        - from
+        - to
+        - has_older
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Message"
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
+        has_older:
+          type: boolean

@@ -5,14 +5,15 @@ abordagem API First.
 
 O foco principal da aplicacao e a jornada do Vendedor. A P3 materializa essa
 jornada na API: o Seller lista, detalha, avanca e cancela os proprios Order
-Items.
+Items. A P4 adiciona Communication entre Buyer e Seller por Order Item.
 
-## Escopo atual (P3)
+## Escopo atual (P4)
 
 A v0 implementou o **Catalogo**. A P2 adicionou **Order**, JWT e estoque
 atomico. A P3, especificada em [`docs/P3_Seller_Journey.md`](docs/P3_Seller_Journey.md),
-expõe a operacao do Seller sobre Order Items (paginacao, filtros, detalhe,
-isolamento 404 e idempotencia). Sem frontend, Communication ou dashboard.
+expoe a operacao do Seller sobre Order Items. A P4, especificada em
+[`docs/P4_Communication.md`](docs/P4_Communication.md), adiciona Conversation e
+Messages. Sem frontend, inbox global, realtime ou dashboard.
 
 O estado atual do codigo esta em [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md).
 
@@ -23,11 +24,15 @@ O estado atual do codigo esta em [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md
                          │
                          ▼
                       Order Item ◀──N:1── Order ◀── Buyer (User)
+                           │
+                           ▼
+                     Conversation ──1:N──▶ Message
 ```
 
 - **Oferta** concentra preco, estoque e disponibilidade atuais.
 - **Order** agrupa itens de um Buyer; um pedido pode ter itens de varios Sellers.
 - **Order Item** congela `purchase_price`, guarda `quantity` e o `status`.
+- **Conversation** liga Buyer e Seller a um Order Item (no maximo uma `open`).
 - Escritas de Offer e Order Item usam o Seller do JWT. Checkout usa o Buyer do JWT.
 - Users de seed tem `name` (Loja A, Loja B, Buyer Demo).
 
@@ -104,6 +109,7 @@ implementacao. O fluxo de qualquer mudanca na API e:
 | `app/auth/` | login, JWT e seed de users |
 | `app/catalog/` | rotas, schemas, modelos e seed do Catalogo |
 | `app/orders/` | checkout, listagem operacional do Seller, status, cancelamento |
+| `app/communication/` | Conversation, Messages e encerramento por inatividade |
 | `migrations/` | migrations do Alembic |
 | `tests/` | testes de unidade e de integracao |
 
