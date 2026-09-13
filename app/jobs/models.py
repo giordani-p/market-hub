@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 
 RECONCILE_PRIORITIES = "RECONCILE_PRIORITIES"
+NOTIFY_STATUS_CHANGE = "NOTIFY_STATUS_CHANGE"
 
 
 @dataclass(frozen=True)

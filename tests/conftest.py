@@ -15,7 +15,9 @@ from app.catalog.seed import seed_all
 from app.core.config import Settings, get_settings
 from app.core.events import publisher
 from app.database import get_engine, get_session, get_session_factory, session_transaction
+from app.jobs.queue import set_job_queue
 from app.main import create_app
+from tests.fakes import InMemoryJobQueue
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -79,8 +81,8 @@ def catalog_client(settings: Settings, test_engine: Engine) -> Iterator[TestClie
     with session_factory() as session:
         session.execute(
             text(
-                "TRUNCATE internal_comments, messages, conversations, order_items, orders, users, "
-                "offers, products, sellers RESTART IDENTITY CASCADE"
+                "TRUNCATE notifications, internal_comments, messages, conversations, order_items, "
+                "orders, users, offers, products, sellers RESTART IDENTITY CASCADE"
             )
         )
         seed_all(session, settings.seed_password)
@@ -100,3 +102,11 @@ def clear_events() -> Iterator[None]:
     publisher.clear()
     yield
     publisher.clear()
+
+
+@pytest.fixture(autouse=True)
+def job_queue() -> Iterator[InMemoryJobQueue]:
+    queue = InMemoryJobQueue()
+    set_job_queue(queue)
+    yield queue
+    set_job_queue(None)

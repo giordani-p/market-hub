@@ -5,6 +5,7 @@ somente apos o commit. Flush ou rollback nao disparam publicacao.
 """
 
 from dataclasses import dataclass
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -50,6 +51,14 @@ class ConversationClosed:
 
 
 @dataclass(frozen=True)
+class ConversationPriorityChanged:
+    conversation_id: UUID
+    from_priority: str
+    to_priority: str
+    changed_at: datetime
+
+
+@dataclass(frozen=True)
 class InternalCommentCreated:
     comment_id: UUID
     order_item_id: UUID
@@ -84,3 +93,7 @@ def publish_pending(session: Session) -> None:
     events = session.info.pop(PENDING_KEY, [])
     for event in events:
         publisher.publish(event)
+    if events:
+        from app.notifications.bridge import enqueue_notifiable
+
+        enqueue_notifiable(events)

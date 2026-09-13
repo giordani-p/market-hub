@@ -3,31 +3,12 @@ import json
 import pytest
 
 from app.core.config import Settings
-from app.jobs.models import RECONCILE_PRIORITIES, Job
-from app.jobs.queue import ReceivedMessage, sqs_client_kwargs
+from app.jobs.handlers import default_registry
+from app.jobs.models import NOTIFY_STATUS_CHANGE, RECONCILE_PRIORITIES, Job
+from app.jobs.queue import sqs_client_kwargs
 from app.jobs.registry import JobRegistry, UnknownJobTypeError, parse_job
 from app.jobs.worker import process_once
-
-
-class InMemoryJobQueue:
-    def __init__(self) -> None:
-        self.pending: list[tuple[str, str]] = []
-        self.deleted: list[str] = []
-        self._n = 0
-
-    def send(self, body: str) -> None:
-        self._n += 1
-        self.pending.append((str(self._n), body))
-
-    def receive(self) -> ReceivedMessage | None:
-        if not self.pending:
-            return None
-        handle, body = self.pending[0]
-        return ReceivedMessage(receipt_handle=handle, body=body)
-
-    def delete(self, receipt_handle: str) -> None:
-        self.deleted.append(receipt_handle)
-        self.pending = [(handle, body) for handle, body in self.pending if handle != receipt_handle]
+from tests.fakes import InMemoryJobQueue
 
 
 def test_parse_job_plain_and_eventbridge_envelope() -> None:
@@ -82,6 +63,33 @@ def test_worker_does_not_delete_unknown_or_invalid_payload() -> None:
     assert process_once(queue, registry) is True
     assert queue.deleted == ["1"]
     assert queue.pending[0][0] == "2"
+
+
+def test_worker_notify_handler_deletes_on_success() -> None:
+    queue = InMemoryJobQueue()
+    queue.send(json.dumps({"job_type": NOTIFY_STATUS_CHANGE, "params": {}}))
+    called: list[Job] = []
+    registry = JobRegistry({NOTIFY_STATUS_CHANGE: called.append})
+    assert process_once(queue, registry) is True
+    assert [job.job_type for job in called] == [NOTIFY_STATUS_CHANGE]
+    assert queue.deleted == ["1"]
+
+
+def test_worker_notify_does_not_delete_when_handler_fails() -> None:
+    queue = InMemoryJobQueue()
+    queue.send(json.dumps({"job_type": NOTIFY_STATUS_CHANGE, "params": {}}))
+
+    def fail(_job: Job) -> None:
+        raise RuntimeError("boom")
+
+    registry = JobRegistry({NOTIFY_STATUS_CHANGE: fail})
+    assert process_once(queue, registry) is True
+    assert queue.pending == [("1", json.dumps({"job_type": NOTIFY_STATUS_CHANGE, "params": {}}))]
+    assert queue.deleted == []
+
+
+def test_default_registry_resolves_notify_job() -> None:
+    assert default_registry().resolve(NOTIFY_STATUS_CHANGE) is not None
 
 
 def test_local_sqs_client_ignores_host_aws_credentials() -> None:

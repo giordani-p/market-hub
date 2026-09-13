@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: Market Hub API
-  description: Market Hub backend. Catalog, Order, Communication and Support/Ops domains.
-  version: 0.6.0
+  description: Market Hub backend. Catalog, Order, Communication, Support/Ops and Notifications.
+  version: 0.8.0
 paths:
   /v1/health:
     get:
@@ -1019,6 +1019,92 @@ paths:
         "409":
           $ref: "#/components/responses/Conflict"
 
+  /v1/notifications:
+    get:
+      tags:
+        - notifications
+      summary: List notifications of the authenticated user
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: page_size
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Paginated notifications of the authenticated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /v1/notifications/unread-count:
+    get:
+      tags:
+        - notifications
+      summary: Count unread notifications of the authenticated user
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Unread count
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnreadCountResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1/notifications/read-all:
+    patch:
+      tags:
+        - notifications
+      summary: Mark all notifications of the authenticated user as read
+      security:
+        - BearerAuth: []
+      responses:
+        "204":
+          description: All notifications marked as read
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1/notifications/{notification_id}/read:
+    parameters:
+      - $ref: "#/components/parameters/NotificationId"
+    patch:
+      tags:
+        - notifications
+      summary: Mark a notification as read
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Notification marked as read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notification"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   securitySchemes:
     BearerAuth:
@@ -1057,6 +1143,13 @@ components:
         format: uuid
     ConversationId:
       name: conversation_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    NotificationId:
+      name: notification_id
       in: path
       required: true
       schema:
@@ -1107,7 +1200,7 @@ components:
           example: ok
         version:
           type: string
-          example: 0.6.0
+          example: 0.8.0
 
     ErrorResponse:
       description: Business error raised by the application.
@@ -2050,5 +2143,101 @@ components:
           type: integer
           minimum: 1
         total:
+          type: integer
+          minimum: 0
+
+    NotificationType:
+      type: string
+      enum:
+        - ORDER_ITEM_STATUS_CHANGED
+        - CONVERSATION_STATUS_CHANGED
+        - CONVERSATION_PRIORITY_CHANGED
+
+    NotificationEntityType:
+      type: string
+      enum:
+        - ORDER_ITEM
+        - CONVERSATION
+
+    NotificationMetadata:
+      type: object
+      required:
+        - previous_status
+        - new_status
+      properties:
+        previous_status:
+          type: string
+        new_status:
+          type: string
+
+    Notification:
+      type: object
+      required:
+        - id
+        - recipient_id
+        - type
+        - title
+        - message
+        - entity_type
+        - entity_id
+        - metadata
+        - created_at
+        - read_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        recipient_id:
+          type: string
+          format: uuid
+        type:
+          $ref: "#/components/schemas/NotificationType"
+        title:
+          type: string
+        message:
+          type: string
+        entity_type:
+          $ref: "#/components/schemas/NotificationEntityType"
+        entity_id:
+          type: string
+          format: uuid
+        metadata:
+          $ref: "#/components/schemas/NotificationMetadata"
+        created_at:
+          type: string
+          format: date-time
+        read_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    NotificationListResponse:
+      type: object
+      required:
+        - items
+        - page
+        - page_size
+        - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Notification"
+        page:
+          type: integer
+          minimum: 1
+        page_size:
+          type: integer
+          minimum: 1
+        total:
+          type: integer
+          minimum: 0
+
+    UnreadCountResponse:
+      type: object
+      required:
+        - unread_count
+      properties:
+        unread_count:
           type: integer
           minimum: 0
