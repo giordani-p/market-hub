@@ -15,5 +15,42 @@ services:
       timeout: 3s
       retries: 10
 
+  localstack:
+    image: localstack/localstack:4.3.0
+    ports:
+      - "4566:4566"
+    environment:
+      SERVICES: sqs,events
+      AWS_DEFAULT_REGION: ${AWS_REGION:-us-east-1}
+      JOBS_QUEUE_NAME: ${JOBS_QUEUE_NAME:-market-hub-jobs}
+      JOBS_DLQ_NAME: ${JOBS_DLQ_NAME:-market-hub-jobs-dlq}
+      JOBS_MAX_RECEIVE_COUNT: ${JOBS_MAX_RECEIVE_COUNT:-3}
+      JOBS_VISIBILITY_TIMEOUT_SECONDS: ${JOBS_VISIBILITY_TIMEOUT_SECONDS:-60}
+      JOBS_SCHEDULE_EXPRESSION: ${JOBS_SCHEDULE_EXPRESSION:-rate(15 minutes)}
+    volumes:
+      - ./infra/local/ready.d:/etc/localstack/init/ready.d
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:4566/_localstack/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  worker:
+    build: .
+    command: python -m app.jobs.worker
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      AWS_ENDPOINT_URL: http://localstack:4566
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: ${AWS_REGION:-us-east-1}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   postgres-data:

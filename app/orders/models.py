@@ -51,5 +51,6 @@ class OrderItem(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
     )
+    status_updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
     order: Mapped[Order] = relationship(back_populates="items")

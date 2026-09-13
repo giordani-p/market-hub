@@ -1,4 +1,4 @@
-.PHONY: install lint format test run db-up db-down migrate revision seed close-inactive
+.PHONY: install lint format test run db-up db-down migrate revision seed close-inactive jobs-up enqueue-reconcile worker
 
 install:
 	uv sync --extra dev
@@ -36,3 +36,12 @@ revision:
 
 close-inactive:
 	uv run python -m app.communication.close_inactive
+
+jobs-up:
+	docker compose up -d --wait postgres localstack worker
+
+enqueue-reconcile:
+	uv run python -m app.jobs.enqueue
+
+worker:
+	uv run python -m app.jobs.worker

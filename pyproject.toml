@@ -1,7 +1,7 @@
 [project]
 name = "market-hub"
-version = "0.6.0"
-description = "Market Hub backend. Catalog, Order, Communication and Support/Ops domains."
+version = "0.7.0"
+description = "Market Hub backend. Catalog, Order, Communication, Support/Ops and background jobs."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -15,6 +15,7 @@ dependencies = [
     "pyjwt>=2.9",
     "bcrypt>=4.2",
     "email-validator>=2.0",
+    "boto3>=1.35",
 ]
 
 [project.optional-dependencies]

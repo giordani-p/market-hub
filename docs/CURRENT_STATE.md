@@ -1,8 +1,8 @@
 # Estado atual do projeto
 
-- **Versao**: 0.6.0
-- **Fase**: P5 — COMPLETE (P5.3 verificacao)
-- **Commit de referencia**: 8637a57
+- **Versao**: 0.7.0
+- **Fase**: P6.1 — COMPLETE (Jobs + reconcilacao automatica de prioridade)
+- **Commit de referencia**: 360017c
 
 ## Do que se trata
 
@@ -17,7 +17,9 @@ adiciona o papel Ops e InternalComment. A fase P5.2, especificada em
 `docs/P5.2_Priority_Policy.md`, adiciona prioridade na Conversation e a fila
 Ops. A fase P5.3, especificada em `docs/P5.3_Closure_Verification.md`, fecha e
 verifica a P5 sem novas capacidades de produto. O resultado do fechamento esta
-em `docs/P5.3_Resultado.md`. O plano da fase nao deve ser
+em `docs/P5.3_Resultado.md`. A fase P6.1, especificada em
+`docs/P6.1_Notification.md`, adiciona a fundacao de Jobs (SQS + Worker) e o
+recalculo periodico de prioridade. O plano da fase nao deve ser
 copiado para ca: este documento descreve o que **existe hoje**.
 
 ## Arquitetura
@@ -27,13 +29,22 @@ ha Clean Architecture nem Hexagonal. Cada dominio entra como um modulo proprio
 em `app/`.
 
 `app/core/` guarda o que e transversal: configuracao, erros de negocio, eventos
-em memoria e traducao para HTTP.
+em memoria e traducao para HTTP. `app/jobs/` e infra transversal de Jobs, nao
+um dominio de produto.
 
 Eventos de dominio (`OrderCreated`, `OrderItemStatusChanged`,
 `OrderItemCancelled`, `ConversationCreated`, `MessageCreated`,
 `ConversationClosed`, `InternalCommentCreated`) sao acumulados na transacao e
 publicados no `InMemoryEventPublisher` somente apos o `commit` da sessao. Nao
 ha bus, Outbox, Kafka nem Redis.
+
+Jobs de background usam SQS no LocalStack. Uma EventBridge Rule
+(`rate(15 minutes)`) publica `RECONCILE_PRIORITIES` na fila `market-hub-jobs`.
+Um Worker em processo separado consome um Job por vez. Falhas nao deletam a
+mensagem; apos `maxReceiveCount` (3) ela vai para `market-hub-jobs-dlq`. O
+EventBridge Scheduler do LocalStack e mock e nao dispara fila; no AWS real o
+mapeamento continua Scheduler → SQS. Recalculo por evento de dominio nao existe:
+a fila Ops pode ficar ate cerca de 15 minutos defasada.
 
 ## Mapa do codigo
 
@@ -48,10 +59,12 @@ ha bus, Outbox, Kafka nem Redis.
 | `app/auth/`          | `User` (com `name` e `role` buyer/seller/ops), login, `/me`, JWT, seed                       |
 | `app/catalog/`       | modelos, schemas, CRUD de Produto/Oferta e seed de sellers                                   |
 | `app/orders/`        | checkout, listagem/detalhe do Seller, status e cancelamento                                  |
-| `app/communication/` | Conversation, Messages, lazy close, batch de inatividade e PriorityPolicy                    |
+| `app/communication/` | Conversation, Messages, lazy close, batch de inatividade, PriorityPolicy e reconcilacao |
 | `app/support/`       | listagem/detalhe Ops, InternalComment, fila e override critical                              |
+| `app/jobs/`          | Job, registry, adapter SQS, Worker e enqueue                                                 |
 | `api/openapi.yaml`   | contrato da API escrito a mao                                                                |
-| `migrations/`        | Alembic `001`–`006` (support `005`, prioridade na Conversation `006`)                        |
+| `infra/local/`       | provisionamento LocalStack (filas, DLQ, EventBridge Rule)                                    |
+| `migrations/`        | Alembic `001`–`007` (stale detection `007`)                                                  |
 | `tests/unit/`        | testes sem aplicacao montada                                                                 |
 | `tests/integration/` | testes via `TestClient` no Postgres de teste                                                 |
 
@@ -168,23 +181,36 @@ O contrato `api/openapi.yaml` e a fonte da verdade e e escrito antes do codigo.
 - Conversation persiste `calculated_priority` (`low`/`medium`/`high`) na criacao
   e `ops_override` (`null`/`critical`). `effective_priority` e derivado.
   Recalculo HTTP e `POST .../priority/refresh`. A fila Ops lista Conversations
-  `open` pelo snapshot persistido. Ops nao le Messages.
+  `open` pelo snapshot persistido. Ops nao le Messages. GET nao recalcula.
+- Conversation persiste `priority_calculated_at` (nullable). Order Item persiste
+  `status_updated_at`. Nenhum dos dois aparece na API. OPEN e stale quando o
+  calculo e nulo, a ultima interacao ou o status sao posteriores, ou o age
+  bucket mudou. O Job `RECONCILE_PRIORITIES` pagina essas Conversations, reusa
+  a PriorityPolicy V1, nao mexe em `ops_override` e e idempotente.
+- `close_inactive` continua fora da fila SQS (`make close-inactive`).
 
 ## Configuracao
 
 Lida de variaveis de ambiente, com `.env` local e `.env.example` como
 referencia: `ENVIRONMENT`, `API_PREFIX`, `DATABASE_URL`, `TEST_DATABASE_URL`,
 `JWT_SECRET`, `JWT_EXPIRE_MINUTES`, `SEED_PASSWORD`,
-`CONVERSATION_INACTIVITY_HOURS`. O `docker-compose.yml` consome
-`POSTGRES_USER`, `POSTGRES_PASSWORD` e `POSTGRES_DB`. Nenhum valor de
-credencial existe no repositorio.
+`CONVERSATION_INACTIVITY_HOURS`, `AWS_ENDPOINT_URL`, `AWS_REGION`,
+`JOBS_QUEUE_NAME`, `JOBS_DLQ_NAME`, `JOBS_VISIBILITY_TIMEOUT_SECONDS`,
+`JOBS_MAX_RECEIVE_COUNT`, `JOBS_WAIT_TIME_SECONDS`, `RECONCILE_PAGE_SIZE`,
+`JOBS_SCHEDULE_EXPRESSION`. `AWS_ENDPOINT_URL` local padrao e
+`http://localhost:4566`; o cliente SQS usa keys dummy nesse endpoint para nao
+herdar `~/.aws`. O `docker-compose.yml` consome
+`POSTGRES_USER`, `POSTGRES_PASSWORD` e `POSTGRES_DB`. Credenciais dummy do
+LocalStack tambem ficam no Compose do Worker. Nenhum valor de credencial real
+existe no repositorio.
 
 ## Persistencia
 
 PostgreSQL 16 em container local, SQLAlchemy 2.0 e Alembic. Tabelas `sellers`,
 `products`, `offers`, `users` (com `name`), `orders`, `order_items`,
-`conversations`, `messages` e `internal_comments`. Testes usam `TEST_DATABASE_URL`.
-`make test` exige o Postgres no ar.
+`conversations`, `messages` e `internal_comments`. `conversations` tem
+`priority_calculated_at`; `order_items` tem `status_updated_at`. Testes usam
+`TEST_DATABASE_URL`. `make test` exige o Postgres no ar e nao sobe LocalStack.
 
 ## Convencoes
 
@@ -195,21 +221,25 @@ PostgreSQL 16 em container local, SQLAlchemy 2.0 e Alembic. Tabelas `sellers`,
 
 ## O que ainda nao existe
 
-- Recalculo automatico de prioridade (eventos, rotina, GET).
+- Recalculo de prioridade no GET ou por evento de dominio (`MessageCreated`,
+  `OrderItemStatusChanged`).
 - Ops lendo Messages Buyer-Seller.
 - Pipeline de CI e qualquer artefato de deploy.
 - Cadastro publico de usuarios, refresh token e IdP.
 - Carrinho persistido, pagamentos, entrega, frontend.
 - Inbox global, dashboard/KPIs, WebSocket/SSE, notificacoes.
-- Event bus, Outbox, Kafka, Redis ou observabilidade.
+- Event bus, Outbox, Kafka, Redis ou observabilidade alem dos logs do Worker.
 - Soft delete ou diferenciacao entre excluir e deixar de disponibilizar.
 
 ## Proxima etapa
 
-P6 — recalculo automatico, notificacoes, SLA e transcript Ops. Sem frontend.
+P6.2 — Notifications sobre a fundacao de Jobs existente, sem redesenhar
+PriorityPolicy nem Conversation. Sem frontend.
 
 ## Historico de versoes
 
+- **0.7.0** — P6.1: Worker SQS, EventBridge Rule local, Job
+  `RECONCILE_PRIORITIES` paginado e idempotente, stamps de stale detection.
 - **0.6.0** — P5.3: fechamento e verificacao da P5 (matriz de testes Ops e
   prioridade, jornada integrada, rebuild das migrations 005/006). P5 completa.
 - **0.6.0** — PriorityPolicy V1 na Conversation, fila Ops de Conversations OPEN,

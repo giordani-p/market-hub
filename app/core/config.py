@@ -21,6 +21,16 @@ class Settings(BaseSettings):
     seed_password: str = ""
     conversation_inactivity_hours: int = 120
 
+    aws_endpoint_url: str = "http://localhost:4566"
+    aws_region: str = "us-east-1"
+    jobs_queue_name: str = "market-hub-jobs"
+    jobs_dlq_name: str = "market-hub-jobs-dlq"
+    jobs_visibility_timeout_seconds: int = 60
+    jobs_max_receive_count: int = 3
+    jobs_wait_time_seconds: int = 10
+    reconcile_page_size: int = 50
+    jobs_schedule_expression: str = "rate(15 minutes)"
+
 
 @lru_cache
 def get_settings() -> Settings:
