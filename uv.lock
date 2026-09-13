@@ -349,7 +349,7 @@ wheels = [
 ]
 
 [[package]]
-name = "marketplace"
+name = "market-hub"
 version = "0.3.0"
 source = { editable = "." }
 dependencies = [

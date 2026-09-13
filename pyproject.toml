@@ -1,5 +1,5 @@
 [project]
-name = "Market Hub"
+name = "market-hub"
 version = "0.3.0"
 description = "Market Hub backend. Catalog and Order domains."
 readme = "README.md"

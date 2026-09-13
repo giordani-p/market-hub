@@ -2,7 +2,7 @@
 
 - **Versao**: 0.3.0
 - **Fase**: P3 (concluida) — jornada operacional do Seller sobre Order Items
-- **Commit de referencia**: working tree (P3 ainda nao commitada)
+- **Commit de referencia**: c4f86b3
 
 ## Do que se trata
 
