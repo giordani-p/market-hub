@@ -1,21 +1,20 @@
-# Marketplace
+# Market Hub
 
-Backend de um Marketplace, construido com Python e FastAPI seguindo uma
-abordagem API First. Projeto de estudo.
+Marketplace, construido com Python e FastAPI seguindo uma
+abordagem API First.
 
-O foco principal da aplicacao e a jornada do Vendedor. A P2 adiciona a
-finalizacao da compra pelo Buyer e a evolucao dos Order Items pelo Seller.
+O foco principal da aplicacao e a jornada do Vendedor. A P3 materializa essa
+jornada na API: o Seller lista, detalha, avanca e cancela os proprios Order
+Items.
 
-## Escopo atual (P2)
+## Escopo atual (P3)
 
-A v0 implementou o dominio de **Catalogo**. A P2 implementa o dominio de
-**Order**, autenticacao JWT sem cadastro publico e consumo atomico de estoque.
+A v0 implementou o **Catalogo**. A P2 adicionou **Order**, JWT e estoque
+atomico. A P3, especificada em [`docs/P3_Seller_Journey.md`](docs/P3_Seller_Journey.md),
+expõe a operacao do Seller sobre Order Items (paginacao, filtros, detalhe,
+isolamento 404 e idempotencia). Sem frontend, Communication ou dashboard.
 
-Fora do escopo desta etapa: cadastro publico, carrinho persistido, pagamentos,
-entrega, frontend, event bus e observabilidade.
-
-O plano da P2 esta em [`docs/p2_order.md`](docs/p2_order.md) e o estado atual
-do codigo em [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md).
+O estado atual do codigo esta em [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md).
 
 ## Dominio
 
@@ -30,6 +29,7 @@ do codigo em [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md).
 - **Order** agrupa itens de um Buyer; um pedido pode ter itens de varios Sellers.
 - **Order Item** congela `purchase_price`, guarda `quantity` e o `status`.
 - Escritas de Offer e Order Item usam o Seller do JWT. Checkout usa o Buyer do JWT.
+- Users de seed tem `name` (Loja A, Loja B, Buyer Demo).
 
 ## Requisitos
 
@@ -103,7 +103,7 @@ implementacao. O fluxo de qualquer mudanca na API e:
 | `app/health.py` | health check |
 | `app/auth/` | login, JWT e seed de users |
 | `app/catalog/` | rotas, schemas, modelos e seed do Catalogo |
-| `app/orders/` | checkout, status, cancelamento |
+| `app/orders/` | checkout, listagem operacional do Seller, status, cancelamento |
 | `migrations/` | migrations do Alembic |
 | `tests/` | testes de unidade e de integracao |
 

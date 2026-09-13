@@ -151,7 +151,7 @@ def test_seller_lists_only_own_order_items(catalog_client: TestClient) -> None:
     offer_b = _offer(
         catalog_client, product["id"], seller_b_headers(catalog_client), price="150.00"
     )
-    catalog_client.post(
+    order = catalog_client.post(
         "/v1/orders",
         json={
             "items": [
@@ -160,12 +160,16 @@ def test_seller_lists_only_own_order_items(catalog_client: TestClient) -> None:
             ]
         },
         headers=buyer_headers(catalog_client),
-    )
+    ).json()
+    id_a = next(item["id"] for item in order["items"] if item["offer_id"] == offer_a["id"])
+    id_b = next(item["id"] for item in order["items"] if item["offer_id"] == offer_b["id"])
 
     items_a = catalog_client.get("/v1/order-items", headers=seller_a_headers(catalog_client)).json()
     items_b = catalog_client.get("/v1/order-items", headers=seller_b_headers(catalog_client)).json()
-    assert [item["offer_id"] for item in items_a] == [offer_a["id"]]
-    assert [item["offer_id"] for item in items_b] == [offer_b["id"]]
+    assert items_a["total"] == 1
+    assert items_b["total"] == 1
+    assert [item["order_item_id"] for item in items_a["items"]] == [id_a]
+    assert [item["order_item_id"] for item in items_b["items"]] == [id_b]
 
 
 def test_seller_cannot_advance_another_sellers_item(catalog_client: TestClient) -> None:
@@ -183,8 +187,8 @@ def test_seller_cannot_advance_another_sellers_item(catalog_client: TestClient) 
         json={"status": "preparing"},
         headers=seller_b_headers(catalog_client),
     )
-    assert response.status_code == 403
-    assert response.json()["code"] == "forbidden"
+    assert response.status_code == 404
+    assert response.json()["code"] == "resource_not_found"
 
 
 def test_seller_advances_status_in_order(catalog_client: TestClient) -> None:

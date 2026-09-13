@@ -24,6 +24,7 @@ def test_jwt_roundtrip() -> None:
     user = User(
         id=uuid4(),
         email="buyer@example.com",
+        name="Buyer Demo",
         password_hash="hash",
         role=UserRole.BUYER,
         seller_id=None,

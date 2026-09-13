@@ -1,15 +1,17 @@
 # Estado atual do projeto
 
-- **Versao**: 0.2.0
-- **Fase**: P2 (concluida) — dominio de Order implementado, com autenticacao JWT
-- **Commit de referencia**: working tree (P2 ainda nao commitada)
+- **Versao**: 0.3.0
+- **Fase**: P3 (concluida) — jornada operacional do Seller sobre Order Items
+- **Commit de referencia**: working tree (P3 ainda nao commitada)
 
 ## Do que se trata
 
 Backend de um Marketplace em Python com FastAPI. A fase P1 cobre o dominio de
-Catalogo (`docs/p1_catalog.md`). A fase P2, especificada em `docs/p2_order.md`, cobre
-pedidos, estoque na efetivacao e autenticacao minima. O plano da fase nao deve
-ser copiado para ca: este documento descreve o que **existe hoje**.
+Catalogo (`docs/p1_catalog.md`). A fase P2, especificada em `docs/p2_order.md`,
+cobre pedidos, estoque na efetivacao e autenticacao minima. A fase P3,
+especificada em `docs/P3_Seller_Journey.md`, materializa a operacao do Seller
+sobre os proprios Order Items. O plano da fase nao deve ser copiado para ca:
+este documento descreve o que **existe hoje**.
 
 ## Arquitetura
 
@@ -35,11 +37,11 @@ Outbox, Kafka nem Redis.
 | `app/core/events.py` | dataclasses de evento e `InMemoryEventPublisher` |
 | `app/database.py` | `Base`, engine, `session_transaction()` (commit + publish) |
 | `app/health.py` | router e schema do health check |
-| `app/auth/` | `User`, login, `/me`, JWT, hash de senha e seed de users |
+| `app/auth/` | `User` (com `name`), login, `/me`, JWT, hash de senha e seed de users |
 | `app/catalog/` | modelos, schemas, CRUD de Produto/Oferta e seed de sellers |
-| `app/orders/` | modelos, checkout atomico, rotas e regras de status |
+| `app/orders/` | checkout, listagem/detalhe do Seller, status e cancelamento |
 | `api/openapi.yaml` | contrato da API escrito a mao |
-| `migrations/` | Alembic: Catalogo (`001`) e auth/orders (`002`) |
+| `migrations/` | Alembic: Catalogo (`001`), auth/orders (`002`) e `users.name` (`003`) |
 | `tests/unit/` | testes sem aplicacao montada |
 | `tests/integration/` | testes via `TestClient` no Postgres de teste |
 
@@ -51,7 +53,7 @@ Rotas implementadas, todas sob o prefixo `/v1`:
 | --- | --- |
 | `GET /v1/health` | `HealthResponse` (`status`, `version`) |
 | `POST /v1/auth/login` | `TokenResponse`; `401 unauthorized` se a senha falhar |
-| `GET /v1/auth/me` | `User` autenticado |
+| `GET /v1/auth/me` | `User` autenticado, inclusive `name` |
 | `GET /v1/products` | array de `Product` |
 | `POST /v1/products` | `201` + `Product` |
 | `GET /v1/products/{product_id}` | `Product` |
@@ -65,14 +67,22 @@ Rotas implementadas, todas sob o prefixo `/v1`:
 | `POST /v1/orders` | checkout atomico; `201` + `Order` ou `409 checkout_rejected` |
 | `GET /v1/orders` | orders do buyer autenticado |
 | `GET /v1/orders/{order_id}` | `Order` do buyer autenticado |
-| `GET /v1/order-items` | items das offers do seller autenticado |
-| `PATCH /v1/order-items/{item_id}` | avanca status no fluxo |
-| `POST /v1/order-items/{item_id}/cancel` | cancela conforme o papel |
+| `GET /v1/order-items` | envelope paginado dos items do seller autenticado |
+| `GET /v1/order-items/{item_id}` | detalhe do seller (`product`, `buyer`, `order`, `offer_id`) |
+| `PATCH /v1/order-items/{item_id}` | avanca status no fluxo; mesmo status e idempotente |
+| `POST /v1/order-items/{item_id}/cancel` | cancela conforme o papel; cancel repetido e idempotente |
+
+`GET /v1/order-items` aceita `page`, `page_size` (padrao 20, maximo 100),
+`status`, `from`, `to` e `order_item_id`. Ordenacao `created_at DESC`. Lista
+vazia responde `200` com `items`, `page`, `page_size` e `total`.
 
 Erros de negocio respondem com `ErrorResponse` (`code`, `message`):
 `resource_not_found` (404), `resource_in_use` e `invalid_transition` (409),
 `unauthorized` (401), `forbidden` (403). Checkout invalido responde
 `CheckoutRejected` (`code: checkout_rejected`, `items` com `reason`).
+
+Seller em item de outro Seller recebe `404 resource_not_found`. Buyer nas
+rotas de listagem/detalhe do Seller recebe `403`. Sem token, `401`.
 
 Nao existe `POST /v1/auth/register`. Usuarios existem so via seed.
 
@@ -85,7 +95,8 @@ O contrato `api/openapi.yaml` e a fonte da verdade e e escrito antes do codigo.
 - Ofertas de um vendedor por filtro na listagem publica: `GET /v1/offers?seller_id=`.
 - Preco como string decimal com duas casas (`"299.00"`), mapeado para `Decimal`
   e `NUMERIC(12,2)`.
-- Listagens retornam array simples, sem envelope nem paginacao.
+- Listagens retornam array simples, sem envelope nem paginacao, **exceto**
+  `GET /v1/order-items`.
 - Exclusao bem-sucedida responde `204` sem corpo.
 - Validacao de campo fica com o Pydantic e responde `422`.
 - `offers.product_id` e `offers.seller_id` usam `ON DELETE RESTRICT`. `order_items.offer_id`
@@ -96,9 +107,12 @@ O contrato `api/openapi.yaml` e a fonte da verdade e e escrito antes do codigo.
 - Carrinho nao e persistido: o cliente reenvia os itens no checkout.
 - `OrderItem.purchase_price` congela o preco; checkout compara `expected_price`.
 - Status do item: `placed` → `preparing` → `in_transit` → `delivered`, mais `cancelled`.
+- `PATCH` de Order Item nao aceita `cancelled` (422). Cancelamento e
+  `POST .../cancel`.
 - Estoque consumido com `UPDATE ... WHERE stock >= quantity`; cancelamento antes de
   `in_transit` recompõe estoque.
-- Users de seed: Loja A, Loja B e um buyer de demonstracao. Senha em `SEED_PASSWORD`.
+- Mutacoes de Order Item relêem o registro com `SELECT ... FOR UPDATE`.
+- Users de seed: Loja A, Loja B e Buyer Demo, com `name`. Senha em `SEED_PASSWORD`.
 
 ## Configuracao
 
@@ -111,8 +125,8 @@ credencial existe no repositorio.
 ## Persistencia
 
 PostgreSQL 16 em container local, SQLAlchemy 2.0 e Alembic. Tabelas `sellers`,
-`products`, `offers`, `users`, `orders` e `order_items`. Testes usam
-`TEST_DATABASE_URL`. `make test` exige o Postgres no ar.
+`products`, `offers`, `users` (com `name`), `orders` e `order_items`. Testes
+usam `TEST_DATABASE_URL`. `make test` exige o Postgres no ar.
 
 ## Convencoes
 
@@ -126,15 +140,19 @@ PostgreSQL 16 em container local, SQLAlchemy 2.0 e Alembic. Tabelas `sellers`,
 - Pipeline de CI e qualquer artefato de deploy.
 - Cadastro publico de usuarios, refresh token e IdP.
 - Carrinho persistido, pagamentos, entrega, frontend.
+- Communication (Conversation/Messages), dashboard/KPIs, WebSocket/SSE.
 - Event bus, Outbox, Kafka, Redis ou observabilidade.
 - Soft delete ou diferenciacao entre excluir e deixar de disponibilizar.
 
 ## Proxima etapa
 
-Definir a spec da fase seguinte (pagamentos, frontend ou event bus).
+Frontend, Communication ou dashboard — sem antecipar no backend.
 
 ## Historico de versoes
 
+- **0.3.0** — jornada do Seller: listagem paginada com filtros, detalhe do
+  Order Item, `users.name`, isolamento 404, PATCH/cancel idempotentes e
+  `SELECT FOR UPDATE` nas mutacoes.
 - **0.2.0** — dominio de Order: checkout atomico, status e cancelamento no
   Order Item, consumo condicional de estoque, JWT sem register, seed de users,
   eventos in-memory apos commit.

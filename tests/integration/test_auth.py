@@ -29,6 +29,7 @@ def test_me_returns_buyer(catalog_client: TestClient) -> None:
     body = response.json()
     assert body["id"] == str(BUYER_ID)
     assert body["email"] == BUYER_EMAIL
+    assert body["name"] == "Buyer Demo"
     assert body["role"] == "buyer"
     assert body["seller_id"] is None
 
@@ -38,6 +39,7 @@ def test_me_returns_seller(catalog_client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["email"] == SELLER_A_EMAIL
+    assert body["name"] == "Loja A"
     assert body["role"] == "seller"
     assert body["seller_id"] == str(SELLER_A_ID)
 
