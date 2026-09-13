@@ -2,7 +2,7 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from app.catalog.seed import SELLER_A_ID
+from tests.integration.auth_helpers import seller_a_headers
 
 
 def _create_product(
@@ -19,12 +19,8 @@ def _create_product(
 def _create_offer(client: TestClient, product_id: str) -> dict:
     response = client.post(
         "/v1/offers",
-        json={
-            "product_id": product_id,
-            "seller_id": str(SELLER_A_ID),
-            "price": "299.00",
-            "stock": 10,
-        },
+        json={"product_id": product_id, "price": "299.00", "stock": 10},
+        headers=seller_a_headers(client),
     )
     assert response.status_code == 201
     return response.json()

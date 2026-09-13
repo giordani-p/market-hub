@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
-  title: Marketplace API
-  description: Marketplace backend. Catalog domain.
-  version: 0.1.0
+  title: Market Hub API
+  description: Market Hub backend. Catalog and Order domains.
+  version: 0.2.0
 paths:
   /v1/health:
     get:
@@ -16,6 +16,46 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthResponse"
+
+  /v1/auth/login:
+    post:
+      tags:
+        - auth
+      summary: Authenticate a seeded user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /v1/auth/me:
+    get:
+      tags:
+        - auth
+      summary: Return the authenticated user
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /v1/products:
     get:
@@ -129,6 +169,9 @@ paths:
       tags:
         - offers
       summary: Create an offer
+      description: seller_id is taken from the authenticated seller.
+      security:
+        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -142,8 +185,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Offer"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
-          description: Referenced product or seller does not exist
+          description: Referenced product does not exist
           content:
             application/json:
               schema:
@@ -171,7 +218,9 @@ paths:
       tags:
         - offers
       summary: Update an offer
-      description: Updates price, stock or availability of an existing offer.
+      description: Updates price, stock or availability of an existing offer owned by the seller.
+      security:
+        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -185,6 +234,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Offer"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
         "422":
@@ -193,13 +246,183 @@ paths:
       tags:
         - offers
       summary: Delete an offer
+      description: Physically deletes the offer. The offer must have no associated order items.
+      security:
+        - BearerAuth: []
       responses:
         "204":
           description: Offer deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /v1/orders:
+    get:
+      tags:
+        - orders
+      summary: List orders of the authenticated buyer
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Orders found
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Order"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags:
+        - orders
+      summary: Checkout
+      description: Creates one order with all items atomically. buyer_id is taken from the token.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CheckoutRequest"
+      responses:
+        "201":
+          description: Order created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: One or more items require review
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckoutRejected"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /v1/orders/{order_id}:
+    parameters:
+      - $ref: "#/components/parameters/OrderId"
+    get:
+      tags:
+        - orders
+      summary: Get an order of the authenticated buyer
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Order found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /v1/order-items:
+    get:
+      tags:
+        - order-items
+      summary: List order items of the authenticated seller
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Order items found
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OrderItem"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /v1/order-items/{item_id}:
+    parameters:
+      - $ref: "#/components/parameters/OrderItemId"
+    patch:
+      tags:
+        - order-items
+      summary: Advance the status of an order item
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderItemStatusUpdate"
+      responses:
+        "200":
+          description: Order item updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderItem"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /v1/order-items/{item_id}/cancel:
+    parameters:
+      - $ref: "#/components/parameters/OrderItemId"
+    post:
+      tags:
+        - order-items
+      summary: Cancel an order item
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Order item cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderItem"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
 components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
   parameters:
     ProductId:
       name: product_id
@@ -215,6 +438,20 @@ components:
       schema:
         type: string
         format: uuid
+    OrderId:
+      name: order_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    OrderItemId:
+      name: item_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
 
   responses:
     NotFound:
@@ -224,7 +461,19 @@ components:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
     Conflict:
-      description: Resource cannot be deleted because related records exist
+      description: Business conflict such as invalid transition or related records
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Authentication is required or the credentials are invalid
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Authenticated user cannot perform this operation
       content:
         application/json:
           schema:
@@ -248,7 +497,7 @@ components:
           example: ok
         version:
           type: string
-          example: 0.1.0
+          example: 0.2.0
 
     ErrorResponse:
       description: Business error raised by the application.
@@ -262,6 +511,9 @@ components:
           enum:
             - resource_not_found
             - resource_in_use
+            - unauthorized
+            - forbidden
+            - invalid_transition
           example: resource_not_found
         message:
           type: string
@@ -275,6 +527,59 @@ components:
           type: array
           items:
             type: object
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: buyer@example.com
+        password:
+          type: string
+          minLength: 1
+
+    TokenResponse:
+      type: object
+      required:
+        - access_token
+        - token_type
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          example: bearer
+
+    User:
+      type: object
+      required:
+        - id
+        - email
+        - role
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        role:
+          $ref: "#/components/schemas/UserRole"
+        seller_id:
+          type:
+            - string
+            - "null"
+          format: uuid
+
+    UserRole:
+      type: string
+      enum:
+        - buyer
+        - seller
 
     Product:
       type: object
@@ -360,14 +665,10 @@ components:
       type: object
       required:
         - product_id
-        - seller_id
         - price
         - stock
       properties:
         product_id:
-          type: string
-          format: uuid
-        seller_id:
           type: string
           format: uuid
         price:
@@ -396,3 +697,157 @@ components:
       type: string
       pattern: ^\d+\.\d{2}$
       example: "299.00"
+
+    CheckoutRequest:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/CheckoutItem"
+
+    CheckoutItem:
+      type: object
+      required:
+        - offer_id
+        - quantity
+        - expected_price
+      properties:
+        offer_id:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          minimum: 1
+        expected_price:
+          $ref: "#/components/schemas/Price"
+
+    CheckoutRejected:
+      type: object
+      required:
+        - code
+        - message
+        - items
+      properties:
+        code:
+          type: string
+          enum:
+            - checkout_rejected
+        message:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CheckoutRejectedItem"
+
+    CheckoutRejectedItem:
+      type: object
+      required:
+        - offer_id
+        - reason
+      properties:
+        offer_id:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          enum:
+            - not_found
+            - unavailable
+            - insufficient_stock
+            - price_changed
+        expected_price:
+          $ref: "#/components/schemas/Price"
+        current_price:
+          type:
+            - string
+            - "null"
+        available:
+          type:
+            - boolean
+            - "null"
+        stock:
+          type:
+            - integer
+            - "null"
+
+    Order:
+      type: object
+      required:
+        - id
+        - buyer_id
+        - items
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        buyer_id:
+          type: string
+          format: uuid
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItem"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    OrderItem:
+      type: object
+      required:
+        - id
+        - order_id
+        - offer_id
+        - quantity
+        - purchase_price
+        - status
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        order_id:
+          type: string
+          format: uuid
+        offer_id:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          minimum: 1
+        purchase_price:
+          $ref: "#/components/schemas/Price"
+        status:
+          $ref: "#/components/schemas/OrderItemStatus"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    OrderItemStatus:
+      type: string
+      enum:
+        - placed
+        - preparing
+        - in_transit
+        - delivered
+        - cancelled
+
+    OrderItemStatusUpdate:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          $ref: "#/components/schemas/OrderItemStatus"

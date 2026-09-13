@@ -1,4 +1,4 @@
-"""Seed de vendedores. Identidade minima, sem rotas na v0."""
+"""Seed de vendedores e usuarios de demonstracao."""
 
 from uuid import UUID
 
@@ -25,9 +25,18 @@ def seed_sellers(session: Session) -> None:
             session.add(Seller(id=seller.id, name=seller.name))
 
 
+def seed_all(session: Session, password: str | None = None) -> None:
+    from app.auth.seed import seed_users
+
+    seed_sellers(session)
+    session.flush()
+    seed_users(session, password)
+
+
 def main() -> None:
     with get_session_factory()() as session:
-        seed_sellers(session)
+        seed_all(session)
+        session.commit()
 
 
 if __name__ == "__main__":

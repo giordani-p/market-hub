@@ -1,7 +1,7 @@
 [project]
 name = "marketplace"
-version = "0.1.0"
-description = "Marketplace backend. Catalog domain."
+version = "0.2.0"
+description = "Marketplace backend. Catalog and Order domains."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -12,6 +12,9 @@ dependencies = [
     "sqlalchemy>=2.0",
     "psycopg[binary]>=3.2",
     "alembic>=1.14",
+    "pyjwt>=2.9",
+    "bcrypt>=4.2",
+    "email-validator>=2.0",
 ]
 
 [project.optional-dependencies]
