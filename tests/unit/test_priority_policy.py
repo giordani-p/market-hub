@@ -1,3 +1,4 @@
+import inspect
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
@@ -87,8 +88,12 @@ def test_value_boundaries(price: str, expected: str) -> None:
     [
         ("0.00", "low"),
         ("1.00", "low"),
+        ("1.000", "low"),
+        ("1.0000", "low"),
         ("1.01", "medium"),
         ("2.25", "medium"),
+        ("2.250", "medium"),
+        ("2.2500", "medium"),
         ("2.26", "high"),
         ("4.00", "high"),
     ],
@@ -133,3 +138,15 @@ def test_low_medium_high_and_max_never_critical() -> None:
     assert classify(maximum) == "high"
     assert effective_priority("high", None) == "high"
     assert effective_priority("low", "critical") == "critical"
+
+
+def test_score_does_not_use_quantity() -> None:
+    assert "quantity" not in inspect.signature(score).parameters
+    kwargs = {
+        "reason": "atraso",
+        "item_status": "placed",
+        "created_at": _created(hours=0),
+        "purchase_price": Decimal("100.00"),
+        "now": NOW,
+    }
+    assert score(**kwargs) == score(**kwargs)

@@ -1,17 +1,22 @@
 ---
-description: Mantém docs/CURRENT_STATE.md como contexto vivo do projeto — leia antes de planejar e atualize ao fechar cada versão
+description: Lê CURRENT_STATE e, quando necessário, Project_Context; atualiza o estado atual ao fechar cada versão
 alwaysApply: true
 ---
 
-# Contexto vivo do projeto
+# Contexto do projeto
 
-O estado atual do projeto vive em `docs/CURRENT_STATE.md`. Ele é a fonte de verdade sobre fase, arquitetura, contratos de API, convenções e o que ainda não existe.
+Dois documentos cobrem o contexto; não misture os papéis.
+
+- `docs/CURRENT_STATE.md` é a fonte de verdade sobre **o que existe hoje**: fase, arquitetura implementada, contratos de API, convenções e o que ainda não existe.
+- `docs/Project_Context.md` é o contexto-base de **produto, domínios e system design inicial**. Não descreve o que já foi implementado nem a sequência das fases.
 
 ## Antes de planejar ou implementar
 
 1. Leia `docs/CURRENT_STATE.md` antes de propor qualquer mudança em `app/` ou `tests/`.
-2. Não refaça a exploração do repositório que o documento já resolve.
-3. Se o documento divergir do código, o código vence — e corrija o documento na mesma entrega.
+2. Leia `docs/Project_Context.md` quando a tarefa depender de intenção de produto, limites de domínio, papéis (Buyer/Seller/Ops), política de prioridade, invariantes ou decisões de system design — não só de "o que o código já faz".
+3. Não refaça a exploração do repositório que esses documentos já resolvem.
+4. Se `CURRENT_STATE.md` divergir do código, o código vence — e corrija o documento na mesma entrega.
+5. Se `Project_Context.md` divergir do código ou de `CURRENT_STATE.md`, o código e o estado atual vencem para o que já existe; use o contexto de produto só para orientar o que ainda não foi implementado, e não invente que o desenho já está no código.
 
 ## Ao fechar uma versão
 
@@ -30,10 +35,10 @@ O que revisar em cada atualização:
 - `Próxima etapa` — aponte para a fase seguinte;
 - `Histórico de versões` — acrescente uma linha, nunca reescreva as anteriores.
 
-O documento descreve o que **existe hoje**. Planos e especificações de fase ficam em `docs/pN.md` e não devem ser copiados para lá.
+`CURRENT_STATE.md` descreve o que **existe hoje**. Planos e especificações de fase ficam em `docs/pN.md` e não devem ser copiados para lá. Não use o fechamento de versão para transformar `Project_Context.md` em changelog de implementação.
 
 ## Convenções de escrita
 
-- Prosa em português, como o restante de `docs/` e o `README.md`.
+- Prosa em português, como o restante de `docs/` e o `README.md`. Aplica-se a `CURRENT_STATE.md` e a `Project_Context.md`.
 - Identificadores, rotas, schemas, comandos e snippets em inglês, como no código.
 - Nenhum segredo ou valor de credencial no documento: apenas nomes de variáveis de ambiente.

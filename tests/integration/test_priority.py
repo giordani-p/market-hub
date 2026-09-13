@@ -119,7 +119,12 @@ def test_ops_item_conversations_and_queue_order(catalog_client: TestClient) -> N
     assert [row["id"] for row in queue["items"]] == [medium["id"], high["id"], low["id"]]
     assert queue["items"][0]["effective_priority"] == "critical"
     assert queue["items"][0]["seller"]["id"] == str(SELLER_B_ID)
+    assert queue["items"][0]["seller"]["name"] == "Loja B"
     assert queue["items"][0]["buyer"]["name"] == "Buyer Demo"
+    assert queue["items"][0]["product"]["name"] == "Tenis XYZ"
+    assert queue["items"][0]["order_item_status"] == "placed"
+    assert queue["items"][0]["purchase_price"] == "80.00"
+    assert "messages" not in queue["items"][0]
 
     catalog_client.post(
         f"/v1/conversations/{medium['id']}/close",
@@ -132,6 +137,8 @@ def test_ops_item_conversations_and_queue_order(catalog_client: TestClient) -> N
     ).json()
     assert history[0]["id"] == medium["id"]
     assert history[0]["status"] == "closed"
+    assert "seller" not in history[0]
+    assert "product" not in history[0]
 
     filtered_seller = catalog_client.get(
         f"/v1/ops/conversations?seller_id={SELLER_A_ID}", headers=ops
@@ -147,6 +154,8 @@ def test_ops_item_conversations_and_queue_order(catalog_client: TestClient) -> N
     assert [row["id"] for row in filtered_item["items"]] == [low["id"]]
     too_big = catalog_client.get("/v1/ops/conversations?page_size=101", headers=ops)
     assert too_big.status_code == 422
+    invalid = catalog_client.get("/v1/ops/conversations?effective_priority=urgent", headers=ops)
+    assert invalid.status_code == 422
 
 
 def test_critical_refresh_and_remove(catalog_client: TestClient, test_engine) -> None:
@@ -157,6 +166,9 @@ def test_critical_refresh_and_remove(catalog_client: TestClient, test_engine) ->
     ops = ops_headers(catalog_client)
     conversation_id = opened["id"]
 
+    before_critical = catalog_client.get(
+        f"/v1/ops/conversations/{conversation_id}", headers=ops
+    ).json()["calculated_priority"]
     missing = catalog_client.post(
         f"/v1/ops/conversations/{conversation_id}/critical",
         json={},
@@ -178,6 +190,7 @@ def test_critical_refresh_and_remove(catalog_client: TestClient, test_engine) ->
     assert applied.status_code == 200
     assert applied.json()["ops_override"] == "critical"
     assert applied.json()["effective_priority"] == "critical"
+    assert applied.json()["calculated_priority"] == before_critical
     comments = catalog_client.get(
         f"/v1/ops/order-items/{item['id']}/internal-comments", headers=ops
     ).json()
@@ -286,3 +299,131 @@ def test_same_band_orders_by_last_interaction(catalog_client: TestClient, test_e
 
     queue = catalog_client.get("/v1/ops/conversations", headers=ops_headers(catalog_client)).json()
     assert [row["id"] for row in queue["items"]] == [newer["id"], older["id"]]
+
+
+def test_ops_queue_empty_and_pagination(catalog_client: TestClient) -> None:
+    ops = ops_headers(catalog_client)
+    empty = catalog_client.get("/v1/ops/conversations", headers=ops)
+    assert empty.status_code == 200
+    assert empty.json() == {"items": [], "page": 1, "page_size": 20, "total": 0}
+
+    product = _product(catalog_client)
+    offer_a = _offer(catalog_client, product["id"], seller_a_headers(catalog_client), "80.00")
+    offer_b = _offer(catalog_client, product["id"], seller_b_headers(catalog_client), "80.00")
+    item_a = _checkout(catalog_client, offer_a["id"], "80.00")
+    item_b = _checkout(catalog_client, offer_b["id"], "80.00")
+    first = _open(catalog_client, item_a["id"], "elogio", buyer_headers(catalog_client))
+    second = _open(catalog_client, item_b["id"], "elogio", buyer_headers(catalog_client))
+    page_two = catalog_client.get("/v1/ops/conversations?page=2&page_size=1", headers=ops).json()
+    assert page_two["page"] == 2
+    assert page_two["page_size"] == 1
+    assert page_two["total"] == 2
+    assert len(page_two["items"]) == 1
+    assert page_two["items"][0]["id"] in {first["id"], second["id"]}
+
+
+def test_ops_item_lists_open_and_closed(catalog_client: TestClient) -> None:
+    product = _product(catalog_client)
+    offer = _offer(catalog_client, product["id"], seller_a_headers(catalog_client), "80.00")
+    item = _checkout(catalog_client, offer["id"], "80.00")
+    first = _open(catalog_client, item["id"], "elogio", buyer_headers(catalog_client))
+    closed = catalog_client.post(
+        f"/v1/conversations/{first['id']}/close",
+        headers=seller_a_headers(catalog_client),
+    )
+    assert closed.status_code == 200
+    second = _open(catalog_client, item["id"], "atraso", buyer_headers(catalog_client))
+    history = catalog_client.get(
+        f"/v1/ops/order-items/{item['id']}/conversations",
+        headers=ops_headers(catalog_client),
+    ).json()
+    assert [row["id"] for row in history] == [second["id"], first["id"]]
+    assert [row["status"] for row in history] == ["open", "closed"]
+    assert "seller" not in history[0]
+    assert "product" not in history[0]
+
+
+def test_refresh_uses_purchase_price_not_offer_price(catalog_client: TestClient) -> None:
+    product = _product(catalog_client)
+    seller = seller_a_headers(catalog_client)
+    offer = _offer(catalog_client, product["id"], seller, "80.00")
+    item = _checkout(catalog_client, offer["id"], "80.00")
+    opened = _open(catalog_client, item["id"], "elogio", buyer_headers(catalog_client))
+    patched = catalog_client.patch(
+        f"/v1/offers/{offer['id']}", json={"price": "5000.00"}, headers=seller
+    )
+    assert patched.status_code == 200
+    ops = ops_headers(catalog_client)
+    refreshed = catalog_client.post(
+        f"/v1/ops/conversations/{opened['id']}/priority/refresh", headers=ops
+    )
+    assert refreshed.status_code == 200
+    assert refreshed.json()["calculated_priority"] == "low"
+
+
+def test_p5_integrated_journey(catalog_client: TestClient) -> None:
+    product = _product(catalog_client)
+    seller_a = seller_a_headers(catalog_client)
+    seller_b = seller_b_headers(catalog_client)
+    buyer = buyer_headers(catalog_client)
+    offer_subject = _offer(catalog_client, product["id"], seller_a, "500.00")
+    offer_companion = _offer(catalog_client, product["id"], seller_b, "500.00")
+    subject_item = _checkout(catalog_client, offer_subject["id"], "500.00")
+    companion_item = _checkout(catalog_client, offer_companion["id"], "500.00")
+    subject = _open(catalog_client, subject_item["id"], "atraso", buyer)
+    companion = _open(catalog_client, companion_item["id"], "atraso", buyer)
+    _advance_item_to_in_transit(catalog_client, companion_item["id"], seller_b)
+
+    ops = ops_headers(catalog_client)
+    created = catalog_client.get(f"/v1/ops/conversations/{subject['id']}", headers=ops)
+    assert created.status_code == 200
+    assert created.json()["calculated_priority"] == "medium"
+    assert created.json()["effective_priority"] == "medium"
+
+    catalog_client.post(f"/v1/ops/conversations/{companion['id']}/priority/refresh", headers=ops)
+    queued = catalog_client.get("/v1/ops/conversations", headers=ops).json()
+    ids = [row["id"] for row in queued["items"]]
+    assert subject["id"] in ids
+    assert queued["items"][0]["id"] == companion["id"]
+
+    _advance_item_to_in_transit(catalog_client, subject_item["id"], seller_a)
+    stale = catalog_client.get("/v1/ops/conversations", headers=ops).json()
+    stale_row = next(row for row in stale["items"] if row["id"] == subject["id"])
+    assert stale_row["calculated_priority"] == "medium"
+
+    refreshed = catalog_client.post(
+        f"/v1/ops/conversations/{subject['id']}/priority/refresh", headers=ops
+    )
+    assert refreshed.status_code == 200
+    assert refreshed.json()["calculated_priority"] == "high"
+    assert refreshed.json()["ops_override"] is None
+
+    ranked = catalog_client.get("/v1/ops/conversations", headers=ops).json()
+    assert ranked["items"][0]["id"] == companion["id"]
+
+    critical = catalog_client.post(
+        f"/v1/ops/conversations/{subject['id']}/critical",
+        json={"justification": "Cliente em risco"},
+        headers=ops,
+    )
+    assert critical.status_code == 200
+    assert critical.json()["ops_override"] == "critical"
+    assert critical.json()["effective_priority"] == "critical"
+    assert critical.json()["calculated_priority"] == "high"
+    comments = catalog_client.get(
+        f"/v1/ops/order-items/{subject_item['id']}/internal-comments", headers=ops
+    ).json()
+    assert comments[-1]["content"] == "Cliente em risco"
+    assert comments[-1]["author_type"] == "ops"
+
+    top = catalog_client.get("/v1/ops/conversations", headers=ops).json()
+    assert top["items"][0]["id"] == subject["id"]
+    assert top["items"][0]["effective_priority"] == "critical"
+
+    removed = catalog_client.post(
+        f"/v1/ops/conversations/{subject['id']}/critical/remove", headers=ops
+    )
+    assert removed.status_code == 200
+    assert removed.json()["ops_override"] is None
+    assert removed.json()["calculated_priority"] == "high"
+    assert removed.json()["effective_priority"] == "high"

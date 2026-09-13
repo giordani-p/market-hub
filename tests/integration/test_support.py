@@ -1,5 +1,6 @@
 from uuid import uuid4
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.auth.seed import OPS_EMAIL, OPS_ID
@@ -48,6 +49,25 @@ def _item_for_seller_a(client: TestClient) -> str:
     return _checkout_item(client, offer["id"])["id"]
 
 
+OPS_ROUTE_CASES = [
+    ("GET", "/v1/ops/order-items", None),
+    ("GET", "/v1/ops/order-items/{item_id}", None),
+    ("GET", "/v1/ops/order-items/{item_id}/internal-comments", None),
+    ("POST", "/v1/ops/order-items/{item_id}/internal-comments", {"content": "note"}),
+    ("GET", "/v1/ops/order-items/{item_id}/conversations", None),
+    ("GET", "/v1/ops/conversations", None),
+    ("GET", "/v1/ops/conversations/{conversation_id}", None),
+    ("POST", "/v1/ops/conversations/{conversation_id}/priority/refresh", None),
+    ("POST", "/v1/ops/conversations/{conversation_id}/critical", {"justification": "urgent"}),
+    ("POST", "/v1/ops/conversations/{conversation_id}/critical/remove", None),
+]
+
+
+def _ops_path(template: str) -> str:
+    fake = str(uuid4())
+    return template.format(item_id=fake, conversation_id=fake)
+
+
 def test_ops_login_and_me(catalog_client: TestClient) -> None:
     login = catalog_client.post(
         "/v1/auth/login", json={"email": OPS_EMAIL, "password": TEST_SEED_PASSWORD}
@@ -68,6 +88,36 @@ def test_anonymous_ops_and_seller_comments_are_401(catalog_client: TestClient) -
     assert catalog_client.get("/v1/ops/order-items").status_code == 401
     assert catalog_client.get(f"/v1/ops/order-items/{item_id}").status_code == 401
     assert catalog_client.get(f"/v1/order-items/{item_id}/internal-comments").status_code == 401
+    assert (
+        catalog_client.post(
+            f"/v1/order-items/{item_id}/internal-comments",
+            json={"content": "nope"},
+        ).status_code
+        == 401
+    )
+
+
+@pytest.mark.parametrize(("method", "template", "body"), OPS_ROUTE_CASES)
+def test_anonymous_ops_routes_are_401(
+    catalog_client: TestClient, method: str, template: str, body: dict | None
+) -> None:
+    kwargs: dict = {"headers": {}}
+    if body is not None:
+        kwargs["json"] = body
+    response = catalog_client.request(method, _ops_path(template), **kwargs)
+    assert response.status_code == 401
+
+
+@pytest.mark.parametrize(("method", "template", "body"), OPS_ROUTE_CASES)
+def test_buyer_and_seller_ops_routes_are_403(
+    catalog_client: TestClient, method: str, template: str, body: dict | None
+) -> None:
+    path = _ops_path(template)
+    for headers in (buyer_headers(catalog_client), seller_a_headers(catalog_client)):
+        kwargs: dict = {"headers": headers}
+        if body is not None:
+            kwargs["json"] = body
+        assert catalog_client.request(method, path, **kwargs).status_code == 403
 
 
 def test_ops_empty_list_and_cross_seller_listing(catalog_client: TestClient) -> None:
@@ -114,6 +164,9 @@ def test_ops_pagination_limits(catalog_client: TestClient) -> None:
     assert first_page["total"] == 21
     assert first_page["page_size"] == 20
     assert len(first_page["items"]) == 20
+    second_page = catalog_client.get("/v1/ops/order-items?page=2", headers=headers).json()
+    assert second_page["page"] == 2
+    assert len(second_page["items"]) == 1
     too_big = catalog_client.get("/v1/ops/order-items?page_size=101", headers=headers)
     assert too_big.status_code == 422
 
@@ -128,6 +181,8 @@ def test_ops_detail_and_missing_item(catalog_client: TestClient) -> None:
     assert body["seller"] == {"id": str(SELLER_A_ID), "name": "Loja A"}
     assert body["buyer"]["name"] == "Buyer Demo"
     assert body["status"] == "placed"
+    assert body["purchase_price"] == "299.00"
+    assert body["product"]["name"] == "Tenis XYZ"
     missing = catalog_client.get(f"/v1/ops/order-items/{uuid4()}", headers=headers)
     assert missing.status_code == 404
     assert missing.json()["code"] == "resource_not_found"
@@ -172,6 +227,28 @@ def test_internal_comments_shared_history_without_conversation(catalog_client: T
     ]
     assert [row["id"] for row in seller_list] == [row["id"] for row in ops_list]
 
+    missing_item = uuid4()
+    assert (
+        catalog_client.get(
+            f"/v1/ops/order-items/{missing_item}/internal-comments", headers=ops
+        ).status_code
+        == 404
+    )
+    assert (
+        catalog_client.post(
+            f"/v1/ops/order-items/{missing_item}/internal-comments",
+            json={"content": "nope"},
+            headers=ops,
+        ).status_code
+        == 404
+    )
+    assert (
+        catalog_client.get(
+            f"/v1/ops/order-items/{missing_item}/conversations", headers=ops
+        ).status_code
+        == 404
+    )
+
     blank = catalog_client.post(
         f"/v1/order-items/{item_id}/internal-comments",
         json={"content": "   "},
@@ -211,8 +288,24 @@ def test_isolation_and_forbidden_roles(catalog_client: TestClient) -> None:
         == 403
     )
     assert (
+        catalog_client.post(
+            f"/v1/order-items/{item_id}/internal-comments",
+            json={"content": "nope"},
+            headers=buyer,
+        ).status_code
+        == 403
+    )
+    assert (
         catalog_client.get(
             f"/v1/order-items/{item_id}/internal-comments", headers=seller_b
+        ).status_code
+        == 404
+    )
+    assert (
+        catalog_client.post(
+            f"/v1/order-items/{item_id}/internal-comments",
+            json={"content": "nope"},
+            headers=seller_b,
         ).status_code
         == 404
     )
@@ -254,6 +347,10 @@ def test_ops_cannot_message_or_close_conversation(catalog_client: TestClient) ->
         catalog_client.get(f"/v1/conversations/{conversation_id}", headers=ops).status_code == 404
     )
     assert (
+        catalog_client.get(f"/v1/conversations/{conversation_id}/messages", headers=ops).status_code
+        == 404
+    )
+    assert (
         catalog_client.post(
             f"/v1/conversations/{conversation_id}/messages",
             json={"content": "hello"},
@@ -265,3 +362,58 @@ def test_ops_cannot_message_or_close_conversation(catalog_client: TestClient) ->
         catalog_client.post(f"/v1/conversations/{conversation_id}/close", headers=ops).status_code
         == 403
     )
+
+
+def test_ops_list_filters_status_period_and_order_item_id(catalog_client: TestClient) -> None:
+    product = _product(catalog_client)
+    offer_a = _offer(catalog_client, product["id"], seller_a_headers(catalog_client))
+    offer_b = _offer(
+        catalog_client, product["id"], seller_b_headers(catalog_client), price="150.00"
+    )
+    placed = _checkout_item(catalog_client, offer_a["id"])
+    other_seller = _checkout_item(catalog_client, offer_b["id"], price="150.00")
+    preparing = _checkout_item(catalog_client, offer_a["id"])
+    catalog_client.patch(
+        f"/v1/order-items/{preparing['id']}",
+        json={"status": "preparing"},
+        headers=seller_a_headers(catalog_client),
+    )
+    ops = ops_headers(catalog_client)
+
+    by_status = catalog_client.get("/v1/ops/order-items?status=preparing", headers=ops).json()
+    assert [item["order_item_id"] for item in by_status["items"]] == [preparing["id"]]
+
+    by_id = catalog_client.get(
+        f"/v1/ops/order-items?order_item_id={placed['id']}", headers=ops
+    ).json()
+    assert [item["order_item_id"] for item in by_id["items"]] == [placed["id"]]
+
+    other_filter = catalog_client.get(
+        f"/v1/ops/order-items?order_item_id={other_seller['id']}", headers=ops
+    ).json()
+    assert [item["order_item_id"] for item in other_filter["items"]] == [other_seller["id"]]
+
+    mismatch = catalog_client.get(
+        f"/v1/ops/order-items?order_item_id={placed['id']}&status=preparing", headers=ops
+    ).json()
+    assert mismatch["items"] == []
+
+    listed = catalog_client.get("/v1/ops/order-items", headers=ops).json()["items"]
+    newer = listed[0]
+    older = listed[-1]
+    period = catalog_client.get(
+        "/v1/ops/order-items",
+        params={"from": older["created_at"], "to": newer["created_at"], "status": "placed"},
+        headers=ops,
+    ).json()
+    period_ids = [item["order_item_id"] for item in period["items"]]
+    assert placed["id"] in period_ids
+    assert other_seller["id"] in period_ids
+    assert preparing["id"] not in period_ids
+
+    inverted = catalog_client.get(
+        "/v1/ops/order-items",
+        params={"from": newer["created_at"], "to": older["created_at"]},
+        headers=ops,
+    ).json()
+    assert inverted["items"] == []
