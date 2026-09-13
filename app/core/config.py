@@ -11,6 +11,7 @@ class Settings(BaseSettings):
 
     environment: Literal["local", "staging", "production"] = "local"
     api_prefix: str = "/v1"
+    cors_origins: str = "http://localhost:5173,http://localhost:3000"
 
     # postgresql+psycopg://<user>:<password>@<host>:<port>/<database>
     database_url: str = ""
@@ -30,6 +31,11 @@ class Settings(BaseSettings):
     jobs_wait_time_seconds: int = 10
     reconcile_page_size: int = 50
     jobs_schedule_expression: str = "rate(15 minutes)"
+
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
 
 @lru_cache
