@@ -54,10 +54,19 @@ def test_checkout_with_items_from_two_sellers(catalog_client: TestClient) -> Non
     assert prices[offer_a["id"]] == "299.00"
     assert prices[offer_b["id"]] == "150.00"
     assert all(item["status"] == "placed" for item in body["items"])
+    assert all(item["product"]["name"] == product["name"] for item in body["items"])
 
     assert catalog_client.get(f"/v1/offers/{offer_a['id']}").json()["stock"] == 8
     assert catalog_client.get(f"/v1/offers/{offer_b['id']}").json()["stock"] == 9
     assert any(isinstance(event, OrderCreated) for event in publisher.events)
+
+    get_response = catalog_client.get("/v1/orders", headers=buyer_headers(catalog_client))
+    assert get_response.status_code == 200
+    listed = get_response.json()[0]
+    assert {item["offer_id"]: item["product"]["name"] for item in listed["items"]} == {
+        offer_a["id"]: product["name"],
+        offer_b["id"]: product["name"],
+    }
 
 
 def test_checkout_rejects_price_change_without_creating_order(catalog_client: TestClient) -> None:

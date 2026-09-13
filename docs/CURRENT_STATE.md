@@ -1,8 +1,9 @@
 # Estado atual do projeto
 
 - **Versao**: 0.8.0
-- **Fase**: P6.2 — COMPLETE (Notifications in-app sobre Jobs da P6.1)
-- **Commit de referencia**: 2e8e414
+- **Fase**: F.0 — COMPLETE (Foundation Frontend)
+- **Commit de referencia**: 7ae5acc
+- **Repositório**: https://github.com/giordani-p/market-hub
 
 ## Do que se trata
 
@@ -93,8 +94,8 @@ Rotas implementadas, todas sob o prefixo `/v1`:
 | `PATCH /v1/offers/{offer_id}`                                   | `Offer` do seller autenticado                                |
 | `DELETE /v1/offers/{offer_id}`                                  | `204`; `409` se houver order items                           |
 | `POST /v1/orders`                                               | checkout atomico; `201` + `Order` ou `409 checkout_rejected` |
-| `GET /v1/orders`                                                | orders do buyer autenticado                                  |
-| `GET /v1/orders/{order_id}`                                     | `Order` do buyer autenticado                                 |
+| `GET /v1/orders`                                                | orders do buyer autenticado, items com produto (`BuyerOrderItem`) |
+| `GET /v1/orders/{order_id}`                                     | `Order` do buyer autenticado, items com produto (`BuyerOrderItem`) |
 | `GET /v1/order-items`                                           | envelope paginado dos items do seller autenticado            |
 | `GET /v1/order-items/{item_id}`                                 | detalhe do seller (`product`, `buyer`, `order`, `offer_id`)  |
 | `PATCH /v1/order-items/{item_id}`                               | avanca status no fluxo; mesmo status e idempotente           |
@@ -157,6 +158,9 @@ O contrato `api/openapi.yaml` e a fonte da verdade e e escrito antes do codigo.
 
 ## Decisoes de contrato e de stack ja tomadas
 
+- `BuyerOrderItem` (usado so em `Order.items`) inclui `product` (`ProductSummary`).
+  O `OrderItem` generico (resposta de `PATCH`/`cancel` de Order Item) continua sem
+  produto: e um schema a parte, nao o mesmo reaproveitado.
 - Atualizacao apenas por `PATCH`, com todos os campos opcionais. Nao ha `PUT`.
 - Ofertas de um vendedor por filtro na listagem publica: `GET /v1/offers?seller_id=`.
 - Preco como string decimal com duas casas (`"299.00"`), mapeado para `Decimal`
@@ -257,10 +261,14 @@ Postgres no ar e nao sobe LocalStack.
 
 ## Proxima etapa
 
-SLA e transcript Ops, ainda nao especificados. Sem frontend.
+Frontend F1 — Buyer Catalog + Purchase (`docs/FRONTEND_F1_SPEC.md`), sobre a
+fundacao entregue na F0. SLA e transcript Ops no backend continuam sem
+especificacao.
 
 ## Historico de versoes
 
+- **0.8.0** — CORS habilitado (`CORS_ORIGINS`) e `BuyerOrderItem` com produto
+  em `GET /v1/orders` e `/v1/orders/{id}`, para viabilizar o frontend F0/F1.
 - **0.8.0** — P6.2: Notifications in-app (`NOTIFY_STATUS_CHANGE`), canal
   PostgreSQL, APIs de inbox do usuario, prioridade efetiva para Seller+Ops.
 

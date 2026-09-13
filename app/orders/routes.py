@@ -6,7 +6,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy import func, select, update
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session
 
 from app.auth.dependencies import BuyerUser, SellerUser, get_current_user
 from app.auth.models import User, UserRole
@@ -24,6 +24,7 @@ from app.orders.access import (
 from app.orders.checkout import checkout
 from app.orders.models import Order, OrderItem
 from app.orders.schemas import (
+    BuyerOrderItem,
     BuyerSummary,
     CheckoutRequest,
     OrderItemDetail,
@@ -59,9 +60,7 @@ def _as_utc(value: datetime) -> datetime:
 
 
 def _get_order_for_buyer(session: Session, order_id: UUID, buyer: User) -> Order:
-    order = session.scalar(
-        select(Order).options(selectinload(Order.items)).where(Order.id == order_id)
-    )
+    order = session.scalar(select(Order).where(Order.id == order_id))
     if order is None or order.buyer_id != buyer.id:
         raise ResourceNotFoundError("Order not found")
     return order
@@ -73,6 +72,49 @@ def _price(value: object) -> str:
     if isinstance(value, Decimal):
         return format_price(value)
     return str(value)
+
+
+def _buyer_order_items_by_order(
+    session: Session, order_ids: list[UUID]
+) -> dict[UUID, list[BuyerOrderItem]]:
+    """Order Items com o Produto exibido na compra, agrupados por Order."""
+    if not order_ids:
+        return {}
+    rows = session.execute(
+        select(OrderItem, Product)
+        .join(Offer, OrderItem.offer_id == Offer.id)
+        .join(Product, Offer.product_id == Product.id)
+        .where(OrderItem.order_id.in_(order_ids))
+        .order_by(OrderItem.created_at)
+    ).all()
+    grouped: dict[UUID, list[BuyerOrderItem]] = {}
+    for item, product in rows:
+        grouped.setdefault(item.order_id, []).append(
+            BuyerOrderItem(
+                id=item.id,
+                order_id=item.order_id,
+                offer_id=item.offer_id,
+                quantity=item.quantity,
+                purchase_price=_price(item.purchase_price),
+                status=item.status,
+                created_at=item.created_at,
+                updated_at=item.updated_at,
+                product=ProductSummary(id=product.id, name=product.name),
+            )
+        )
+    return grouped
+
+
+def _order_response(
+    order: Order, items_by_order: dict[UUID, list[BuyerOrderItem]]
+) -> OrderResponse:
+    return OrderResponse(
+        id=order.id,
+        buyer_id=order.buyer_id,
+        items=items_by_order.get(order.id, []),
+        created_at=order.created_at,
+        updated_at=order.updated_at,
+    )
 
 
 def _list_item(item: OrderItem, product: Product, order: Order, buyer: User) -> OrderItemListItem:
@@ -112,14 +154,11 @@ def _detail(item: OrderItem, product: Product, order: Order, buyer: User) -> Ord
     response_model=list[OrderResponse],
     summary="List orders of the authenticated buyer",
 )
-def list_orders(buyer: BuyerUser, session: SessionDep) -> list[Order]:
-    stmt = (
-        select(Order)
-        .options(selectinload(Order.items))
-        .where(Order.buyer_id == buyer.id)
-        .order_by(Order.created_at)
-    )
-    return list(session.scalars(stmt).all())
+def list_orders(buyer: BuyerUser, session: SessionDep) -> list[OrderResponse]:
+    stmt = select(Order).where(Order.buyer_id == buyer.id).order_by(Order.created_at)
+    orders = list(session.scalars(stmt).all())
+    items_by_order = _buyer_order_items_by_order(session, [order.id for order in orders])
+    return [_order_response(order, items_by_order) for order in orders]
 
 
 @orders_router.post(
@@ -128,8 +167,10 @@ def list_orders(buyer: BuyerUser, session: SessionDep) -> list[Order]:
     status_code=status.HTTP_201_CREATED,
     summary="Checkout",
 )
-def create_order(payload: CheckoutRequest, buyer: BuyerUser, session: SessionDep) -> Order:
-    return checkout(session, buyer.id, payload)
+def create_order(payload: CheckoutRequest, buyer: BuyerUser, session: SessionDep) -> OrderResponse:
+    order = checkout(session, buyer.id, payload)
+    items_by_order = _buyer_order_items_by_order(session, [order.id])
+    return _order_response(order, items_by_order)
 
 
 @orders_router.get(
@@ -137,8 +178,10 @@ def create_order(payload: CheckoutRequest, buyer: BuyerUser, session: SessionDep
     response_model=OrderResponse,
     summary="Get an order of the authenticated buyer",
 )
-def get_order(order_id: UUID, buyer: BuyerUser, session: SessionDep) -> Order:
-    return _get_order_for_buyer(session, order_id, buyer)
+def get_order(order_id: UUID, buyer: BuyerUser, session: SessionDep) -> OrderResponse:
+    order = _get_order_for_buyer(session, order_id, buyer)
+    items_by_order = _buyer_order_items_by_order(session, [order.id])
+    return _order_response(order, items_by_order)
 
 
 @items_router.get(

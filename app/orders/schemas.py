@@ -54,16 +54,6 @@ class OrderItemResponse(BaseModel):
         return str(value)
 
 
-class OrderResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: UUID
-    buyer_id: UUID
-    items: list[OrderItemResponse]
-    created_at: datetime
-    updated_at: datetime
-
-
 class BuyerSummary(BaseModel):
     id: UUID
     name: str
@@ -72,6 +62,28 @@ class BuyerSummary(BaseModel):
 class ProductSummary(BaseModel):
     id: UUID
     name: str
+
+
+class BuyerOrderItem(BaseModel):
+    """Order Item na visao do Buyer, com o produto exibido na compra."""
+
+    id: UUID
+    order_id: UUID
+    offer_id: UUID
+    quantity: int
+    purchase_price: str
+    status: str
+    created_at: datetime
+    updated_at: datetime
+    product: ProductSummary
+
+
+class OrderResponse(BaseModel):
+    id: UUID
+    buyer_id: UUID
+    items: list[BuyerOrderItem]
+    created_at: datetime
+    updated_at: datetime
 
 
 class ProductDetailSummary(BaseModel):

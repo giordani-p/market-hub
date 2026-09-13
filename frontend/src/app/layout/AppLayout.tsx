@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router-dom'
+import { NavLink, Outlet } from 'react-router-dom'
 import { Button } from '../../components/ui/Button'
 import { useAuth } from '../providers/auth-context'
 import { NAV_ITEMS } from './nav'
@@ -23,11 +23,23 @@ export function AppLayout() {
       </header>
       <div className="app-body">
         <nav className="app-nav" aria-label="Navegação principal">
-          {navItems.map((item) => (
-            <span key={item.label} className="app-nav-item" aria-disabled="true" title="Em breve">
-              {item.label}
-            </span>
-          ))}
+          {navItems.map((item) =>
+            item.to ? (
+              <NavLink
+                key={item.label}
+                to={item.to}
+                className={({ isActive }) =>
+                  `app-nav-item app-nav-link${isActive ? ' app-nav-link-active' : ''}`
+                }
+              >
+                {item.label}
+              </NavLink>
+            ) : (
+              <span key={item.label} className="app-nav-item" aria-disabled="true" title="Em breve">
+                {item.label}
+              </span>
+            ),
+          )}
         </nav>
         <main className="app-content">
           <Outlet />

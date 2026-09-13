@@ -2,6 +2,8 @@ export interface ApiError {
   status: number
   code: string
   message: string
+  /** Corpo bruto do erro quando ha campos alem de code/message (ex.: checkout_rejected.items). */
+  details?: unknown
 }
 
 interface DomainErrorBody {
@@ -33,7 +35,7 @@ function isValidationErrorBody(body: unknown): body is ValidationErrorBody {
 /** Normaliza os dois formatos de erro do backend: `ErrorResponse` e o 422 do FastAPI. */
 export function normalizeErrorBody(status: number, body: unknown): ApiError {
   if (isDomainErrorBody(body)) {
-    return { status, code: body.code, message: body.message }
+    return { status, code: body.code, message: body.message, details: body }
   }
   if (isValidationErrorBody(body)) {
     const message = body.detail.map((item) => item.msg).join('; ') || 'Validation error'

@@ -10,11 +10,13 @@ function baseUrl(): string {
 export class ApiRequestError extends Error {
   status: number
   code: string
+  details?: unknown
 
   constructor(error: ApiError) {
     super(error.message)
     this.status = error.status
     this.code = error.code
+    this.details = error.details
   }
 }
 
@@ -30,7 +32,7 @@ export function setUnauthorizedHandler(handler: UnauthorizedHandler): void {
 interface RequestOptions {
   method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'
   body?: unknown
-  /** false para chamadas que não devem enviar o Bearer token (ex.: login). */
+  /** false para chamadas que nao devem enviar o Bearer token (ex.: login). */
   auth?: boolean
 }
 
