@@ -6,14 +6,17 @@ abordagem API First.
 O foco principal da aplicacao e a jornada do Vendedor. A P3 materializa essa
 jornada na API: o Seller lista, detalha, avanca e cancela os proprios Order
 Items. A P4 adiciona Communication entre Buyer e Seller por Order Item.
+A P5.1 adiciona o papel Ops e InternalComment operacional.
 
-## Escopo atual (P4)
+## Escopo atual (P5.1)
 
 A v0 implementou o **Catalogo**. A P2 adicionou **Order**, JWT e estoque
 atomico. A P3, especificada em [`docs/P3_Seller_Journey.md`](docs/P3_Seller_Journey.md),
 expoe a operacao do Seller sobre Order Items. A P4, especificada em
 [`docs/P4_Communication.md`](docs/P4_Communication.md), adiciona Conversation e
-Messages. Sem frontend, inbox global, realtime ou dashboard.
+Messages. A P5.1, especificada em [`docs/P5.1_Support_Ops.md`](docs/P5.1_Support_Ops.md),
+adiciona Ops em `/v1/ops` e InternalComment. Sem frontend, inbox global,
+realtime, dashboard ou PriorityPolicy.
 
 O estado atual do codigo esta em [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md).
 
@@ -27,14 +30,19 @@ O estado atual do codigo esta em [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md
                            │
                            ▼
                      Conversation ──1:N──▶ Message
+                           │
+                           ▼
+                     InternalComment (Seller e Ops)
 ```
 
 - **Oferta** concentra preco, estoque e disponibilidade atuais.
 - **Order** agrupa itens de um Buyer; um pedido pode ter itens de varios Sellers.
 - **Order Item** congela `purchase_price`, guarda `quantity` e o `status`.
 - **Conversation** liga Buyer e Seller a um Order Item (no maximo uma `open`).
+- **InternalComment** liga Seller e Ops ao mesmo Order Item, sem Conversation.
 - Escritas de Offer e Order Item usam o Seller do JWT. Checkout usa o Buyer do JWT.
-- Users de seed tem `name` (Loja A, Loja B, Buyer Demo).
+  Ops nao herda essas escritas; opera em `/v1/ops`.
+- Users de seed tem `name` (Loja A, Loja B, Buyer Demo, Ops Demo).
 
 ## Requisitos
 
@@ -49,7 +57,7 @@ cp .env.example .env   # preencha Postgres, JWT_SECRET e SEED_PASSWORD
 make install
 make db-up             # sobe o Postgres, espera ficar saudavel e cria o banco de teste
 make migrate           # aplica as migrations
-make seed              # cria Loja A, Loja B e um buyer de demonstracao
+make seed              # cria Loja A, Loja B, um buyer e um ops de demonstracao
 make run
 ```
 
@@ -57,7 +65,8 @@ A API sobe em `http://localhost:8000` e as rotas ficam sob o prefixo `/v1`.
 `make db-down` derruba o banco.
 
 Login: `POST /v1/auth/login` com o email de seed (`loja-a@example.com`,
-`loja-b@example.com`, `buyer@example.com`) e a senha de `SEED_PASSWORD`.
+`loja-b@example.com`, `buyer@example.com`, `ops@example.com`) e a senha de
+`SEED_PASSWORD`.
 
 ## Persistencia
 
@@ -110,6 +119,7 @@ implementacao. O fluxo de qualquer mudanca na API e:
 | `app/catalog/` | rotas, schemas, modelos e seed do Catalogo |
 | `app/orders/` | checkout, listagem operacional do Seller, status, cancelamento |
 | `app/communication/` | Conversation, Messages e encerramento por inatividade |
+| `app/support/` | listagem Ops, InternalComment |
 | `migrations/` | migrations do Alembic |
 | `tests/` | testes de unidade e de integracao |
 

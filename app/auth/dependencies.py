@@ -49,5 +49,12 @@ def require_seller(user: CurrentUser) -> User:
     return user
 
 
+def require_ops(user: CurrentUser) -> User:
+    if user.role != UserRole.OPS:
+        raise ForbiddenError("Ops role required")
+    return user
+
+
 BuyerUser = Annotated[User, Depends(require_buyer)]
 SellerUser = Annotated[User, Depends(require_seller)]
+OpsUser = Annotated[User, Depends(require_ops)]

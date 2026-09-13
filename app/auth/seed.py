@@ -14,10 +14,12 @@ from app.core.config import get_settings
 SELLER_A_USER_ID = UUID("aaaaaaaa-1111-1111-1111-111111111111")
 SELLER_B_USER_ID = UUID("bbbbbbbb-2222-2222-2222-222222222222")
 BUYER_ID = UUID("33333333-3333-3333-3333-333333333333")
+OPS_ID = UUID("44444444-4444-4444-4444-444444444444")
 
 SELLER_A_EMAIL = "loja-a@example.com"
 SELLER_B_EMAIL = "loja-b@example.com"
 BUYER_EMAIL = "buyer@example.com"
+OPS_EMAIL = "ops@example.com"
 
 
 def seed_users(session: Session, password: str | None = None) -> None:
@@ -50,6 +52,14 @@ def seed_users(session: Session, password: str | None = None) -> None:
             name="Buyer Demo",
             password_hash=password_hash,
             role=UserRole.BUYER,
+            seller_id=None,
+        ),
+        User(
+            id=OPS_ID,
+            email=OPS_EMAIL,
+            name="Ops Demo",
+            password_hash=password_hash,
+            role=UserRole.OPS,
             seller_id=None,
         ),
     )

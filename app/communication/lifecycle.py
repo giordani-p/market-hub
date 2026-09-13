@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.auth.models import User, UserRole
 from app.communication.models import Conversation, Message
 from app.core.config import Settings
-from app.core.errors import InvalidTransitionError
+from app.core.errors import ForbiddenError, InvalidTransitionError
 from app.core.events import ConversationClosed, ConversationCreated, MessageCreated, record_event
 
 SYSTEM_CLOSE_MESSAGE = (
@@ -139,7 +139,9 @@ def close_by_seller(
 def author_type_for(user: User) -> str:
     if user.role == UserRole.SELLER:
         return "seller"
-    return "buyer"
+    if user.role == UserRole.BUYER:
+        return "buyer"
+    raise ForbiddenError("Buyer or Seller role required")
 
 
 def add_message(

@@ -1,8 +1,8 @@
 # Estado atual do projeto
 
-- **Versao**: 0.4.0
-- **Fase**: P4 (concluida) — Communication entre Buyer e Seller por Order Item
-- **Commit de referencia**: pendente (entrega local da P4)
+- **Versao**: 0.5.0
+- **Fase**: P5.1 (concluida) — Support/Ops e InternalComment
+- **Commit de referencia**: 31b4236
 
 ## Do que se trata
 
@@ -12,8 +12,9 @@ cobre pedidos, estoque na efetivacao e autenticacao minima. A fase P3,
 especificada em `docs/P3_Seller_Journey.md`, materializa a operacao do Seller
 sobre os proprios Order Items. A fase P4, especificada em
 `docs/P4_Communication.md`, adiciona Conversation e Messages contextualizadas
-pelo Order Item. O plano da fase nao deve ser copiado para ca: este documento
-descreve o que **existe hoje**.
+pelo Order Item. A fase P5.1, especificada em `docs/P5.1_Support_Ops.md`,
+adiciona o papel Ops e InternalComment. O plano da fase nao deve ser copiado
+para ca: este documento descreve o que **existe hoje**.
 
 ## Arquitetura
 
@@ -26,65 +27,74 @@ em memoria e traducao para HTTP.
 
 Eventos de dominio (`OrderCreated`, `OrderItemStatusChanged`,
 `OrderItemCancelled`, `ConversationCreated`, `MessageCreated`,
-`ConversationClosed`) sao acumulados na transacao e publicados no
-`InMemoryEventPublisher` somente apos o `commit` da sessao. Nao ha bus,
-Outbox, Kafka nem Redis.
+`ConversationClosed`, `InternalCommentCreated`) sao acumulados na transacao e
+publicados no `InMemoryEventPublisher` somente apos o `commit` da sessao. Nao
+ha bus, Outbox, Kafka nem Redis.
 
 ## Mapa do codigo
 
-| Caminho | O que contem |
-| --- | --- |
-| `app/main.py` | `create_app()`, handlers de erro e routers com prefixo de versao |
-| `app/core/config.py` | `Settings` e `get_settings()` com cache |
-| `app/core/errors.py` | `DomainError` e subclasses, inclusive `CheckoutRejectedError` |
-| `app/core/events.py` | dataclasses de evento e `InMemoryEventPublisher` |
-| `app/database.py` | `Base`, engine, `session_transaction()` (commit + publish) |
-| `app/health.py` | router e schema do health check |
-| `app/auth/` | `User` (com `name`), login, `/me`, JWT, hash de senha e seed de users |
-| `app/catalog/` | modelos, schemas, CRUD de Produto/Oferta e seed de sellers |
-| `app/orders/` | checkout, listagem/detalhe do Seller, status e cancelamento |
-| `app/communication/` | Conversation, Messages, lazy close e batch de inatividade |
-| `api/openapi.yaml` | contrato da API escrito a mao |
-| `migrations/` | Alembic: Catalogo (`001`), auth/orders (`002`), `users.name` (`003`) e communication (`004`) |
-| `tests/unit/` | testes sem aplicacao montada |
-| `tests/integration/` | testes via `TestClient` no Postgres de teste |
+| Caminho              | O que contem                                                                                 |
+| -------------------- | -------------------------------------------------------------------------------------------- |
+| `app/main.py`        | `create_app()`, handlers de erro e routers com prefixo de versao                             |
+| `app/core/config.py` | `Settings` e `get_settings()` com cache                                                      |
+| `app/core/errors.py` | `DomainError` e subclasses, inclusive `CheckoutRejectedError`                                |
+| `app/core/events.py` | dataclasses de evento e `InMemoryEventPublisher`                                             |
+| `app/database.py`    | `Base`, engine, `session_transaction()` (commit + publish)                                   |
+| `app/health.py`      | router e schema do health check                                                              |
+| `app/auth/`          | `User` (com `name` e `role` buyer/seller/ops), login, `/me`, JWT, seed                       |
+| `app/catalog/`       | modelos, schemas, CRUD de Produto/Oferta e seed de sellers                                   |
+| `app/orders/`        | checkout, listagem/detalhe do Seller, status e cancelamento                                  |
+| `app/communication/` | Conversation, Messages, lazy close e batch de inatividade                                    |
+| `app/support/`       | listagem/detalhe Ops, InternalComment (Seller e Ops)                                         |
+| `api/openapi.yaml`   | contrato da API escrito a mao                                                                |
+| `migrations/`        | Alembic: Catalogo (`001`), auth/orders (`002`), `users.name` (`003`), communication (`004`) e support (`005`) |
+| `tests/unit/`        | testes sem aplicacao montada                                                                 |
+| `tests/integration/` | testes via `TestClient` no Postgres de teste                                                 |
 
 ## Contratos de API
 
 Rotas implementadas, todas sob o prefixo `/v1`:
 
-| Rota | Resposta |
-| --- | --- |
-| `GET /v1/health` | `HealthResponse` (`status`, `version`) |
-| `POST /v1/auth/login` | `TokenResponse`; `401 unauthorized` se a senha falhar |
-| `GET /v1/auth/me` | `User` autenticado, inclusive `name` |
-| `GET /v1/products` | array de `Product` |
-| `POST /v1/products` | `201` + `Product` |
-| `GET /v1/products/{product_id}` | `Product` |
-| `PATCH /v1/products/{product_id}` | `Product` |
-| `DELETE /v1/products/{product_id}` | `204`; `409` se o produto ainda tiver ofertas |
-| `GET /v1/offers` | array de `Offer`; filtro opcional `?seller_id=` (publico) |
-| `POST /v1/offers` | `201` + `Offer`; `seller_id` vem do JWT de seller |
-| `GET /v1/offers/{offer_id}` | `Offer` |
-| `PATCH /v1/offers/{offer_id}` | `Offer` do seller autenticado |
-| `DELETE /v1/offers/{offer_id}` | `204`; `409` se houver order items |
-| `POST /v1/orders` | checkout atomico; `201` + `Order` ou `409 checkout_rejected` |
-| `GET /v1/orders` | orders do buyer autenticado |
-| `GET /v1/orders/{order_id}` | `Order` do buyer autenticado |
-| `GET /v1/order-items` | envelope paginado dos items do seller autenticado |
-| `GET /v1/order-items/{item_id}` | detalhe do seller (`product`, `buyer`, `order`, `offer_id`) |
-| `PATCH /v1/order-items/{item_id}` | avanca status no fluxo; mesmo status e idempotente |
-| `POST /v1/order-items/{item_id}/cancel` | cancela conforme o papel; cancel repetido e idempotente |
-| `POST /v1/order-items/{item_id}/conversation` | `201` nova ou `200` OPEN reutilizada |
-| `GET /v1/order-items/{item_id}/conversations` | array por `last_interaction_at DESC` |
-| `GET /v1/conversations/{conversation_id}` | Conversation do participante |
-| `POST /v1/conversations/{conversation_id}/close` | Seller fecha; ja `closed` responde `409` |
-| `POST /v1/conversations/{conversation_id}/messages` | `201` Message em Conversation `open` |
-| `GET /v1/conversations/{conversation_id}/messages` | janela de 24h UTC (`from`, `to`, `has_older`) |
+| Rota                                                | Resposta                                                     |
+| --------------------------------------------------- | ------------------------------------------------------------ |
+| `GET /v1/health`                                    | `HealthResponse` (`status`, `version`)                       |
+| `POST /v1/auth/login`                               | `TokenResponse`; `401 unauthorized` se a senha falhar        |
+| `GET /v1/auth/me`                                   | `User` autenticado, inclusive `name`                         |
+| `GET /v1/products`                                  | array de `Product`                                           |
+| `POST /v1/products`                                 | `201` + `Product`                                            |
+| `GET /v1/products/{product_id}`                     | `Product`                                                    |
+| `PATCH /v1/products/{product_id}`                   | `Product`                                                    |
+| `DELETE /v1/products/{product_id}`                  | `204`; `409` se o produto ainda tiver ofertas                |
+| `GET /v1/offers`                                    | array de `Offer`; filtro opcional `?seller_id=` (publico)    |
+| `POST /v1/offers`                                   | `201` + `Offer`; `seller_id` vem do JWT de seller            |
+| `GET /v1/offers/{offer_id}`                         | `Offer`                                                      |
+| `PATCH /v1/offers/{offer_id}`                       | `Offer` do seller autenticado                                |
+| `DELETE /v1/offers/{offer_id}`                      | `204`; `409` se houver order items                           |
+| `POST /v1/orders`                                   | checkout atomico; `201` + `Order` ou `409 checkout_rejected` |
+| `GET /v1/orders`                                    | orders do buyer autenticado                                  |
+| `GET /v1/orders/{order_id}`                         | `Order` do buyer autenticado                                 |
+| `GET /v1/order-items`                               | envelope paginado dos items do seller autenticado            |
+| `GET /v1/order-items/{item_id}`                     | detalhe do seller (`product`, `buyer`, `order`, `offer_id`)  |
+| `PATCH /v1/order-items/{item_id}`                   | avanca status no fluxo; mesmo status e idempotente           |
+| `POST /v1/order-items/{item_id}/cancel`             | cancela conforme o papel; cancel repetido e idempotente      |
+| `POST /v1/order-items/{item_id}/internal-comments`  | `201` InternalComment do Seller no proprio item              |
+| `GET /v1/order-items/{item_id}/internal-comments`   | array cronologico do Seller no proprio item                  |
+| `POST /v1/order-items/{item_id}/conversation`       | `201` nova ou `200` OPEN reutilizada                         |
+| `GET /v1/order-items/{item_id}/conversations`       | array por `last_interaction_at DESC`                         |
+| `GET /v1/conversations/{conversation_id}`           | Conversation do participante                                 |
+| `POST /v1/conversations/{conversation_id}/close`    | Seller fecha; ja `closed` responde `409`                     |
+| `POST /v1/conversations/{conversation_id}/messages` | `201` Message em Conversation `open`                         |
+| `GET /v1/conversations/{conversation_id}/messages`  | janela de 24h UTC (`from`, `to`, `has_older`)                |
+| `GET /v1/ops/order-items`                           | envelope paginado de todos os items (Ops)                    |
+| `GET /v1/ops/order-items/{item_id}`                 | detalhe Ops (`product`, `buyer`, `seller`, `order`)          |
+| `POST /v1/ops/order-items/{item_id}/internal-comments` | `201` InternalComment do Ops                              |
+| `GET /v1/ops/order-items/{item_id}/internal-comments`  | array cronologico (mesmo historico do Seller)             |
 
 `GET /v1/order-items` aceita `page`, `page_size` (padrao 20, maximo 100),
 `status`, `from`, `to` e `order_item_id`. Ordenacao `created_at DESC`. Lista
 vazia responde `200` com `items`, `page`, `page_size` e `total`.
+`GET /v1/ops/order-items` usa os mesmos parametros e acrescenta `seller_id`.
+Cada item da listagem Ops inclui `seller` (`id`, `name` da tabela `sellers`).
 
 `GET /v1/conversations/{id}/messages` aceita `before` (date-time com timezone,
 nao futuro). Sem `before`, retorna as Messages das ultimas 24h.
@@ -97,7 +107,9 @@ Erros de negocio respondem com `ErrorResponse` (`code`, `message`):
 Seller em item de outro Seller recebe `404 resource_not_found`. Buyer nas
 rotas de listagem/detalhe do Seller recebe `403`. Sem token, `401`. Participante
 sem relacao com Conversation ou Order Item recebe `404`. Buyer em
-`POST .../close` recebe `403`.
+`POST .../close` recebe `403`. Buyer e Seller em `/v1/ops/*` recebem `403`.
+Ops nas rotas exclusivas de Seller/Buyer recebe `403`; em Conversation/Message,
+`404` (nao e participante).
 
 Nao existe `POST /v1/auth/register`. Usuarios existem so via seed.
 
@@ -111,7 +123,8 @@ O contrato `api/openapi.yaml` e a fonte da verdade e e escrito antes do codigo.
 - Preco como string decimal com duas casas (`"299.00"`), mapeado para `Decimal`
   e `NUMERIC(12,2)`.
 - Listagens retornam array simples, sem envelope nem paginacao, **exceto**
-  `GET /v1/order-items` e `GET /v1/conversations/{id}/messages`.
+  `GET /v1/order-items`, `GET /v1/ops/order-items` e
+  `GET /v1/conversations/{id}/messages`.
 - Exclusao bem-sucedida responde `204` sem corpo.
 - Validacao de campo fica com o Pydantic e responde `422`.
 - `offers.product_id` e `offers.seller_id` usam `ON DELETE RESTRICT`. `order_items.offer_id`
@@ -127,13 +140,17 @@ O contrato `api/openapi.yaml` e a fonte da verdade e e escrito antes do codigo.
 - Estoque consumido com `UPDATE ... WHERE stock >= quantity`; cancelamento antes de
   `in_transit` recompõe estoque.
 - Mutacoes de Order Item relêem o registro com `SELECT ... FOR UPDATE`.
-- Users de seed: Loja A, Loja B e Buyer Demo, com `name`. Senha em `SEED_PASSWORD`.
+- Users de seed: Loja A, Loja B, Buyer Demo e Ops Demo, com `name`. Senha em
+  `SEED_PASSWORD`. `User.role` e `buyer`, `seller` ou `ops`.
 - Conversation: uma `open` por Order Item (indice unico parcial). Status
   `open`/`closed`. Motivos: `atraso`, `troca`, `devolucao`, `reclamacao`,
   `suporte`, `elogio`, `outros`.
 - Messages sao texto imutavel (maximo 2000). Autor `buyer`, `seller` ou `system`.
 - Close manual e so do Seller e nao cria Message sistemica. Inatividade (120h)
   fecha com Message sistemica, via lazy no acesso ou `make close-inactive`.
+- Ops opera so em `/v1/ops`. InternalComment e texto imutavel (maximo 2000)
+  entre Seller e Ops, no Order Item, independente de Conversation. Autor
+  `seller` ou `ops`. Ops nao le Conversation nesta fase.
 
 ## Configuracao
 
@@ -148,8 +165,8 @@ credencial existe no repositorio.
 
 PostgreSQL 16 em container local, SQLAlchemy 2.0 e Alembic. Tabelas `sellers`,
 `products`, `offers`, `users` (com `name`), `orders`, `order_items`,
-`conversations` e `messages`. Testes usam `TEST_DATABASE_URL`. `make test`
-exige o Postgres no ar.
+`conversations`, `messages` e `internal_comments`. Testes usam `TEST_DATABASE_URL`.
+`make test` exige o Postgres no ar.
 
 ## Convencoes
 
@@ -160,6 +177,8 @@ exige o Postgres no ar.
 
 ## O que ainda nao existe
 
+- PriorityPolicy, `calculated_priority`, override `CRITICAL` e recalculo.
+- Ops lendo Conversation Buyer-Seller.
 - Pipeline de CI e qualquer artefato de deploy.
 - Cadastro publico de usuarios, refresh token e IdP.
 - Carrinho persistido, pagamentos, entrega, frontend.
@@ -169,10 +188,14 @@ exige o Postgres no ar.
 
 ## Proxima etapa
 
-Frontend ou dashboard — sem antecipar no backend.
+P5.2 — PriorityPolicy na Conversation, com rotas em `/v1/ops` e justificativa
+via InternalComment. Sem antecipar recalculo automatico nem frontend.
 
 ## Historico de versoes
 
+- **0.5.0** — Support/Ops: papel `ops`, namespace `/v1/ops` com listagem global
+  de Order Items, InternalComment imutavel compartilhado com o Seller, seed
+  Ops Demo e evento pos-commit.
 - **0.4.0** — Communication: Conversation por Order Item, Messages imutaveis,
   uma OPEN por item, close manual do Seller, encerramento por inatividade
   (lazy + batch) e eventos pos-commit.

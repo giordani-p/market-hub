@@ -49,6 +49,12 @@ class ConversationClosed:
     closed_by: str
 
 
+@dataclass(frozen=True)
+class InternalCommentCreated:
+    comment_id: UUID
+    order_item_id: UUID
+
+
 class InMemoryEventPublisher:
     """Publisher de processo unico, para testes e evolucao futura."""
 

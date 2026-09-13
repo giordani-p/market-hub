@@ -23,6 +23,7 @@ def test_cancel_rules() -> None:
     assert can_cancel("in_transit", UserRole.SELLER)
     assert not can_cancel("delivered", UserRole.SELLER)
     assert not can_cancel("cancelled", UserRole.BUYER)
+    assert not can_cancel("placed", UserRole.OPS)
 
 
 def test_stock_restore_on_cancel() -> None:

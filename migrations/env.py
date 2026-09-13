@@ -14,6 +14,7 @@ from app.communication import models as communication_models  # noqa: F401
 from app.core.config import get_settings
 from app.database import Base, get_engine
 from app.orders import models as order_models  # noqa: F401
+from app.support import models as support_models  # noqa: F401
 
 config = context.config
 
