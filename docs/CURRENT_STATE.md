@@ -16,7 +16,8 @@ pelo Order Item. A fase P5.1, especificada em `docs/P5.1_Support_Ops.md`,
 adiciona o papel Ops e InternalComment. A fase P5.2, especificada em
 `docs/P5.2_Priority_Policy.md`, adiciona prioridade na Conversation e a fila
 Ops. A fase P5.3, especificada em `docs/P5.3_Closure_Verification.md`, fecha e
-verifica a P5 sem novas capacidades de produto. O plano da fase nao deve ser
+verifica a P5 sem novas capacidades de produto. O resultado do fechamento esta
+em `docs/P5.3_Resultado.md`. O plano da fase nao deve ser
 copiado para ca: este documento descreve o que **existe hoje**.
 
 ## Arquitetura
