@@ -101,7 +101,7 @@ def run_reconcile(
                 break
             found += len(rows)
             for conversation, item in rows:
-                if apply_calculated_priority(conversation, item, now=moment):
+                if apply_calculated_priority(conversation, item, now=moment, session=session):
                     updated += 1
                 else:
                     unchanged += 1

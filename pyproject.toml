@@ -1,7 +1,7 @@
 [project]
 name = "market-hub"
-version = "0.7.0"
-description = "Market Hub backend. Catalog, Order, Communication, Support/Ops and background jobs."
+version = "0.8.0"
+description = "Market Hub backend. Catalog, Order, Communication, Support/Ops, Jobs and Notifications."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

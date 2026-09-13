@@ -1,8 +1,8 @@
 # Estado atual do projeto
 
-- **Versao**: 0.7.0
-- **Fase**: P6.1 — COMPLETE (Jobs + reconcilacao automatica de prioridade)
-- **Commit de referencia**: 360017c
+- **Versao**: 0.8.0
+- **Fase**: P6.2 — COMPLETE (Notifications in-app sobre Jobs da P6.1)
+- **Commit de referencia**: working tree
 
 ## Do que se trata
 
@@ -18,9 +18,11 @@ adiciona o papel Ops e InternalComment. A fase P5.2, especificada em
 Ops. A fase P5.3, especificada em `docs/P5.3_Closure_Verification.md`, fecha e
 verifica a P5 sem novas capacidades de produto. O resultado do fechamento esta
 em `docs/P5.3_Resultado.md`. A fase P6.1, especificada em
-`docs/P6.1_Notification.md`, adiciona a fundacao de Jobs (SQS + Worker) e o
-recalculo periodico de prioridade. O plano da fase nao deve ser
-copiado para ca: este documento descreve o que **existe hoje**.
+`docs/P6.1_Foundation_Worker.md`, adiciona a fundacao de Jobs (SQS + Worker) e o
+recalculo periodico de prioridade. A fase P6.2, especificada em
+`docs/P6.2_Notification.md`, adiciona Notifications in-app via o Job
+`NOTIFY_STATUS_CHANGE`. O plano da fase nao deve ser copiado para ca: este
+documento descreve o que **existe hoje**.
 
 ## Arquitetura
 
@@ -34,9 +36,11 @@ um dominio de produto.
 
 Eventos de dominio (`OrderCreated`, `OrderItemStatusChanged`,
 `OrderItemCancelled`, `ConversationCreated`, `MessageCreated`,
-`ConversationClosed`, `InternalCommentCreated`) sao acumulados na transacao e
-publicados no `InMemoryEventPublisher` somente apos o `commit` da sessao. Nao
-ha bus, Outbox, Kafka nem Redis.
+`ConversationClosed`, `ConversationPriorityChanged`, `InternalCommentCreated`)
+sao acumulados na transacao e publicados no `InMemoryEventPublisher` somente
+apos o `commit` da sessao. Eventos notificaveis enfileiram
+`NOTIFY_STATUS_CHANGE` na mesma fila SQS; falha nesse publish nao desfaz o
+commit (sem Outbox). Nao ha bus, Kafka nem Redis.
 
 Jobs de background usam SQS no LocalStack. Uma EventBridge Rule
 (`rate(15 minutes)`) publica `RECONCILE_PRIORITIES` na fila `market-hub-jobs`.
@@ -62,9 +66,10 @@ a fila Ops pode ficar ate cerca de 15 minutos defasada.
 | `app/communication/` | Conversation, Messages, lazy close, batch de inatividade, PriorityPolicy e reconcilacao |
 | `app/support/`       | listagem/detalhe Ops, InternalComment, fila e override critical                              |
 | `app/jobs/`          | Job, registry, adapter SQS, Worker e enqueue                                                 |
+| `app/notifications/` | Notification in-app, canal, service, Job `NOTIFY_STATUS_CHANGE` e rotas                      |
 | `api/openapi.yaml`   | contrato da API escrito a mao                                                                |
 | `infra/local/`       | provisionamento LocalStack (filas, DLQ, EventBridge Rule)                                    |
-| `migrations/`        | Alembic `001`–`007` (stale detection `007`)                                                  |
+| `migrations/`        | Alembic `001`–`008` (notifications `008`)                                                    |
 | `tests/unit/`        | testes sem aplicacao montada                                                                 |
 | `tests/integration/` | testes via `TestClient` no Postgres de teste                                                 |
 
@@ -112,6 +117,10 @@ Rotas implementadas, todas sob o prefixo `/v1`:
 | `POST /v1/ops/conversations/{conversation_id}/priority/refresh` | recalcula `calculated_priority`                     |
 | `POST /v1/ops/conversations/{conversation_id}/critical` | override `critical` + InternalComment                    |
 | `POST /v1/ops/conversations/{conversation_id}/critical/remove` | remove override                                     |
+| `GET /v1/notifications`                             | envelope paginado das Notifications do usuario       |
+| `GET /v1/notifications/unread-count`                | `{ unread_count }` do usuario autenticado            |
+| `PATCH /v1/notifications/{notification_id}/read`    | `200` Notification; alheia → `404`                   |
+| `PATCH /v1/notifications/read-all`                  | `204`; idempotente                                   |
 
 `GET /v1/order-items` aceita `page`, `page_size` (padrao 20, maximo 100),
 `status`, `from`, `to` e `order_item_id`. Ordenacao `created_at DESC`. Lista
@@ -121,6 +130,9 @@ Cada item da listagem Ops inclui `seller` (`id`, `name` da tabela `sellers`).
 `GET /v1/ops/conversations` lista so `open`, ordena `critical > high > medium > low`
 e depois `last_interaction_at DESC`, e aceita `seller_id`, `order_item_id` e
 `effective_priority`. Envelope `items`/`page`/`page_size`/`total`.
+
+`GET /v1/notifications` usa `page`/`page_size` (padrao 20, maximo 100),
+ordena `created_at DESC` e isola por `recipient_id` do JWT.
 
 `GET /v1/conversations/{id}/messages` aceita `before` (date-time com timezone,
 nao futuro). Sem `before`, retorna as Messages das ultimas 24h.
@@ -150,8 +162,8 @@ O contrato `api/openapi.yaml` e a fonte da verdade e e escrito antes do codigo.
 - Preco como string decimal com duas casas (`"299.00"`), mapeado para `Decimal`
   e `NUMERIC(12,2)`.
 - Listagens retornam array simples, sem envelope nem paginacao, **exceto**
-  `GET /v1/order-items`, `GET /v1/ops/order-items`, `GET /v1/ops/conversations` e
-  `GET /v1/conversations/{id}/messages`.
+  `GET /v1/order-items`, `GET /v1/ops/order-items`, `GET /v1/ops/conversations`,
+  `GET /v1/conversations/{id}/messages` e `GET /v1/notifications`.
 - Exclusao bem-sucedida responde `204` sem corpo.
 - Validacao de campo fica com o Pydantic e responde `422`.
 - `offers.product_id` e `offers.seller_id` usam `ON DELETE RESTRICT`. `order_items.offer_id`
@@ -188,6 +200,14 @@ O contrato `api/openapi.yaml` e a fonte da verdade e e escrito antes do codigo.
   bucket mudou. O Job `RECONCILE_PRIORITIES` pagina essas Conversations, reusa
   a PriorityPolicy V1, nao mexe em `ops_override` e e idempotente.
 - `close_inactive` continua fora da fila SQS (`make close-inactive`).
+- Notifications in-app: Job `NOTIFY_STATUS_CHANGE` apos commit. Status de
+  OrderItem (`OrderItemStatusChanged`, inclusive cancelamento) e close de
+  Conversation (`ConversationClosed`) avisam Buyer + Seller. Mudanca real de
+  `effective_priority` (`ConversationPriorityChanged`, inclusive reconcile e
+  critical) avisa Seller + Ops. `ConversationCreated` e `MessageCreated` nao
+  notificam. `title`/`message` em ingles. Idempotencia por unique
+  `(recipient, type, entity, previous, new, changed_at)`. Canal so `IN_APP`.
+  A API nao espera a Notification; `make test` usa fila in-memory.
 
 ## Configuracao
 
@@ -208,9 +228,10 @@ existe no repositorio.
 
 PostgreSQL 16 em container local, SQLAlchemy 2.0 e Alembic. Tabelas `sellers`,
 `products`, `offers`, `users` (com `name`), `orders`, `order_items`,
-`conversations`, `messages` e `internal_comments`. `conversations` tem
-`priority_calculated_at`; `order_items` tem `status_updated_at`. Testes usam
-`TEST_DATABASE_URL`. `make test` exige o Postgres no ar e nao sobe LocalStack.
+`conversations`, `messages`, `internal_comments` e `notifications`.
+`conversations` tem `priority_calculated_at`; `order_items` tem
+`status_updated_at`. Testes usam `TEST_DATABASE_URL`. `make test` exige o
+Postgres no ar e nao sobe LocalStack.
 
 ## Convencoes
 
@@ -227,16 +248,19 @@ PostgreSQL 16 em container local, SQLAlchemy 2.0 e Alembic. Tabelas `sellers`,
 - Pipeline de CI e qualquer artefato de deploy.
 - Cadastro publico de usuarios, refresh token e IdP.
 - Carrinho persistido, pagamentos, entrega, frontend.
-- Inbox global, dashboard/KPIs, WebSocket/SSE, notificacoes.
+- Inbox global de frontend, dashboard/KPIs, WebSocket/SSE.
 - Event bus, Outbox, Kafka, Redis ou observabilidade alem dos logs do Worker.
 - Soft delete ou diferenciacao entre excluir e deixar de disponibilizar.
+- Canais Email/Slack/WhatsApp e notificacoes de `MessageCreated`.
 
 ## Proxima etapa
 
-P6.2 — Notifications sobre a fundacao de Jobs existente, sem redesenhar
-PriorityPolicy nem Conversation. Sem frontend.
+SLA e transcript Ops, ainda nao especificados. Sem frontend.
 
 ## Historico de versoes
+
+- **0.8.0** — P6.2: Notifications in-app (`NOTIFY_STATUS_CHANGE`), canal
+  PostgreSQL, APIs de inbox do usuario, prioridade efetiva para Seller+Ops.
 
 - **0.7.0** — P6.1: Worker SQS, EventBridge Rule local, Job
   `RECONCILE_PRIORITIES` paginado e idempotente, stamps de stale detection.

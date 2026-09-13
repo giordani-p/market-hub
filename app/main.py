@@ -8,6 +8,7 @@ from app.catalog import offers, products
 from app.communication.routes import conversation_router, item_router
 from app.core.config import Settings, get_settings
 from app.core.errors import register_exception_handlers
+from app.notifications.routes import router as notifications_router
 from app.orders.routes import items_router, orders_router
 from app.support.routes import ops_router, seller_comments_router
 
@@ -19,7 +20,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app = FastAPI(
         title="Market Hub API",
         version=__version__,
-        description="Catalog, Orders, Communication and Support/Ops domains.",
+        description="Catalog, Orders, Communication, Support/Ops and Notifications.",
         openapi_url="/openapi.json",
         docs_url="/docs",
     )
@@ -37,6 +38,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(conversation_router, prefix=settings.api_prefix)
     app.include_router(ops_router, prefix=settings.api_prefix)
     app.include_router(seller_comments_router, prefix=settings.api_prefix)
+    app.include_router(notifications_router, prefix=settings.api_prefix)
 
     return app
 

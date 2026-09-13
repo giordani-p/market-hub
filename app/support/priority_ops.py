@@ -14,6 +14,7 @@ from app.communication.lifecycle import utcnow
 from app.communication.models import Conversation
 from app.communication.priority import apply_calculated_priority, effective_priority
 from app.core.errors import InvalidTransitionError
+from app.core.events import ConversationPriorityChanged, record_event
 from app.orders.models import Order, OrderItem
 from app.orders.schemas import BuyerSummary, ProductSummary
 from app.support.access import load_ops_item
@@ -39,9 +40,7 @@ PriorityRank = case(
 
 
 def _price(value: object) -> str:
-    if isinstance(value, Decimal):
-        return format_price(value)
-    return str(value)
+    return format_price(value) if isinstance(value, Decimal) else str(value)
 
 
 def to_ops_conversation(conversation: Conversation) -> OpsConversation:
@@ -65,7 +64,7 @@ def refresh_calculated_priority(
     session: Session, conversation: Conversation, *, now: datetime | None = None
 ) -> Conversation:
     item = load_ops_item(session, conversation.order_item_id)
-    apply_calculated_priority(conversation, item, now=now or utcnow())
+    apply_calculated_priority(conversation, item, now=now or utcnow(), session=session)
     session.flush()
     return conversation
 
@@ -75,9 +74,22 @@ def apply_critical(
 ) -> Conversation:
     if conversation.ops_override == "critical":
         raise InvalidTransitionError("Conversation is already critical")
+    before = effective_priority(conversation.calculated_priority, conversation.ops_override)
     create_comment(session, conversation.order_item_id, user, justification)
     conversation.ops_override = "critical"
-    conversation.updated_at = utcnow()
+    now = utcnow()
+    conversation.updated_at = now
+    after = effective_priority(conversation.calculated_priority, conversation.ops_override)
+    if after != before:
+        record_event(
+            session,
+            ConversationPriorityChanged(
+                conversation_id=conversation.id,
+                from_priority=before,
+                to_priority=after,
+                changed_at=now,
+            ),
+        )
     session.flush()
     return conversation
 
@@ -85,8 +97,21 @@ def apply_critical(
 def remove_critical(session: Session, conversation: Conversation) -> Conversation:
     if conversation.ops_override is None:
         raise InvalidTransitionError("Conversation has no critical override")
+    before = effective_priority(conversation.calculated_priority, conversation.ops_override)
     conversation.ops_override = None
-    conversation.updated_at = utcnow()
+    now = utcnow()
+    conversation.updated_at = now
+    after = effective_priority(conversation.calculated_priority, conversation.ops_override)
+    if after != before:
+        record_event(
+            session,
+            ConversationPriorityChanged(
+                conversation_id=conversation.id,
+                from_priority=before,
+                to_priority=after,
+                changed_at=now,
+            ),
+        )
     session.flush()
     return conversation
 

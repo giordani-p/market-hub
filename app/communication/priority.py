@@ -3,7 +3,10 @@
 from datetime import datetime, timedelta
 from decimal import Decimal
 
+from sqlalchemy.orm import Session
+
 from app.communication.models import Conversation
+from app.core.events import ConversationPriorityChanged, record_event
 from app.orders.models import OrderItem
 
 REASON_WEIGHTS: dict[str, Decimal] = {
@@ -128,9 +131,18 @@ def is_stale(
 
 
 def apply_calculated_priority(
-    conversation: Conversation, item: OrderItem, *, now: datetime
+    conversation: Conversation,
+    item: OrderItem,
+    *,
+    now: datetime,
+    session: Session | None = None,
 ) -> bool:
-    """Recalcula a prioridade persistida. Nao mexe em ops_override nem em eventos."""
+    """Recalcula a prioridade persistida. Nao mexe em ops_override.
+
+    Emite ConversationPriorityChanged somente quando effective_priority muda
+    e uma session e fornecida.
+    """
+    before = effective_priority(conversation.calculated_priority, conversation.ops_override)
     calculated = calculate_priority(
         reason=conversation.reason,
         item_status=item.status,
@@ -143,4 +155,15 @@ def apply_calculated_priority(
         conversation.calculated_priority = calculated
         conversation.updated_at = now
     conversation.priority_calculated_at = now
+    after = effective_priority(conversation.calculated_priority, conversation.ops_override)
+    if session is not None and after != before:
+        record_event(
+            session,
+            ConversationPriorityChanged(
+                conversation_id=conversation.id,
+                from_priority=before,
+                to_priority=after,
+                changed_at=now,
+            ),
+        )
     return changed

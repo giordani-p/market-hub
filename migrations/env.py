@@ -13,6 +13,7 @@ from app.catalog import models as catalog_models  # noqa: F401
 from app.communication import models as communication_models  # noqa: F401
 from app.core.config import get_settings
 from app.database import Base, get_engine
+from app.notifications import models as notification_models  # noqa: F401
 from app.orders import models as order_models  # noqa: F401
 from app.support import models as support_models  # noqa: F401
 

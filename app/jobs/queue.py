@@ -7,7 +7,7 @@ from typing import Protocol
 import boto3
 from botocore.exceptions import ClientError
 
-from app.core.config import Settings
+from app.core.config import Settings, get_settings
 
 # Credenciais dummy aceitas pelo LocalStack. Nao sao segredos reais.
 _LOCALSTACK_ACCESS_KEY = "test"
@@ -75,6 +75,22 @@ class SqsJobQueue:
 
     def send(self, body: str) -> None:
         self._client.send_message(QueueUrl=self.queue_url(), MessageBody=body)
+
+
+_job_queue: JobQueue | None = None
+
+
+def get_job_queue() -> JobQueue:
+    """Fila compartilhada no processo. Testes substituem via set_job_queue."""
+    global _job_queue
+    if _job_queue is None:
+        _job_queue = SqsJobQueue(get_settings())
+    return _job_queue
+
+
+def set_job_queue(queue: JobQueue | None) -> None:
+    global _job_queue
+    _job_queue = queue
 
 
 def wait_for_queue(queue: SqsJobQueue, *, attempts: int = 30) -> None:
