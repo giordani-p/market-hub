@@ -9,9 +9,11 @@ Items. A P4 adiciona Communication entre Buyer e Seller por Order Item.
 A P5.1 adiciona o papel Ops e InternalComment operacional.
 A P5.2 adiciona prioridade na Conversation e a fila Ops.
 A P5.3, especificada em [`docs/P5.3_Closure_Verification.md`](docs/P5.3_Closure_Verification.md),
-fecha e verifica a P5.
+fecha e verifica a P5. A P6.1, especificada em
+[`docs/P6.1_Notification.md`](docs/P6.1_Notification.md), adiciona Jobs em
+background e o recalculo periodico de prioridade.
 
-## Escopo atual (P5)
+## Escopo atual (P6.1)
 
 A v0 implementou o **Catalogo**. A P2 adicionou **Order**, JWT e estoque
 atomico. A P3, especificada em [`docs/P3_Seller_Journey.md`](docs/P3_Seller_Journey.md),
@@ -21,7 +23,8 @@ Messages. A P5.1, especificada em [`docs/P5.1_Support_Ops.md`](docs/P5.1_Support
 adiciona Ops em `/v1/ops` e InternalComment. A P5.2, especificada em
 [`docs/P5.2_Priority_Policy.md`](docs/P5.2_Priority_Policy.md), calcula prioridade
 e expoe a fila de Conversations OPEN. A P5.3 confirma o fechamento da P5.
-Sem frontend, realtime, dashboard, notificacoes ou recalculo automatico.
+A P6.1 adiciona Worker SQS, EventBridge Rule local e reconcilacao periodica
+de prioridade. Sem frontend, realtime, dashboard ou notificacoes.
 
 O estado atual do codigo esta em [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md).
 
@@ -54,7 +57,7 @@ O estado atual do codigo esta em [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md
 
 - Python 3.12 ou superior
 - [uv](https://docs.astral.sh/uv/)
-- Docker, para o Postgres local
+- Docker, para o Postgres local, o LocalStack e o Worker
 
 ## Como executar
 
@@ -69,6 +72,17 @@ make run
 
 A API sobe em `http://localhost:8000` e as rotas ficam sob o prefixo `/v1`.
 `make db-down` derruba o banco.
+
+Para o Worker e a reconcilacao periodica (LocalStack + SQS):
+
+```bash
+make jobs-up           # sobe Postgres, LocalStack e o Worker
+make enqueue-reconcile # publica RECONCILE_PRIORITIES na hora, sem esperar 15 min
+```
+
+A Rule do EventBridge dispara a cada 15 minutos. Para conferir a DLQ, publique
+uma mensagem invalida na fila e receba-a ate `JOBS_MAX_RECEIVE_COUNT` (3).
+`make test` nao sobe LocalStack.
 
 Login: `POST /v1/auth/login` com o email de seed (`loja-a@example.com`,
 `loja-b@example.com`, `buyer@example.com`, `ops@example.com`) e a senha de
@@ -124,8 +138,10 @@ implementacao. O fluxo de qualquer mudanca na API e:
 | `app/auth/` | login, JWT e seed de users |
 | `app/catalog/` | rotas, schemas, modelos e seed do Catalogo |
 | `app/orders/` | checkout, listagem operacional do Seller, status, cancelamento |
-| `app/communication/` | Conversation, Messages, encerramento por inatividade e prioridade |
+| `app/communication/` | Conversation, Messages, encerramento por inatividade, prioridade e reconcilacao |
 | `app/support/` | listagem Ops, InternalComment, fila e override critical |
+| `app/jobs/` | fundacao de Jobs, Worker SQS e enqueue |
+| `infra/local/` | provisionamento LocalStack |
 | `migrations/` | migrations do Alembic |
 | `tests/` | testes de unidade e de integracao |
 

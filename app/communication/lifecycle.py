@@ -80,6 +80,7 @@ def get_or_create_conversation(
             now=now,
         ),
         ops_override=None,
+        priority_calculated_at=now,
     )
     try:
         with session.begin_nested():

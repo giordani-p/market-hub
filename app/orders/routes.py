@@ -47,7 +47,9 @@ items_router = APIRouter(tags=["order-items"])
 
 
 def _touch(item: OrderItem) -> None:
-    item.updated_at = datetime.now(UTC)
+    now = datetime.now(UTC)
+    item.updated_at = now
+    item.status_updated_at = now
 
 
 def _as_utc(value: datetime) -> datetime:

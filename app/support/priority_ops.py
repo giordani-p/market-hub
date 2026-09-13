@@ -12,7 +12,7 @@ from app.catalog.models import Offer, Product, Seller
 from app.catalog.schemas import format_price
 from app.communication.lifecycle import utcnow
 from app.communication.models import Conversation
-from app.communication.priority import calculate_priority, effective_priority
+from app.communication.priority import apply_calculated_priority, effective_priority
 from app.core.errors import InvalidTransitionError
 from app.orders.models import Order, OrderItem
 from app.orders.schemas import BuyerSummary, ProductSummary
@@ -65,14 +65,7 @@ def refresh_calculated_priority(
     session: Session, conversation: Conversation, *, now: datetime | None = None
 ) -> Conversation:
     item = load_ops_item(session, conversation.order_item_id)
-    conversation.calculated_priority = calculate_priority(
-        reason=conversation.reason,
-        item_status=item.status,
-        created_at=conversation.created_at,
-        purchase_price=item.purchase_price,
-        now=now or utcnow(),
-    )
-    conversation.updated_at = now or utcnow()
+    apply_calculated_priority(conversation, item, now=now or utcnow())
     session.flush()
     return conversation
 

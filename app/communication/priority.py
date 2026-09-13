@@ -3,6 +3,9 @@
 from datetime import datetime, timedelta
 from decimal import Decimal
 
+from app.communication.models import Conversation
+from app.orders.models import OrderItem
+
 REASON_WEIGHTS: dict[str, Decimal] = {
     "atraso": Decimal("1.00"),
     "reclamacao": Decimal("0.75"),
@@ -21,18 +24,31 @@ STATUS_WEIGHTS: dict[str, Decimal] = {
     "cancelled": Decimal("0.00"),
 }
 
+AGE_BUCKET_HOURS: tuple[int, ...] = (4, 12, 24, 48)
+AGE_BUCKET_WEIGHTS: tuple[Decimal, ...] = (
+    Decimal("0.00"),
+    Decimal("0.25"),
+    Decimal("0.50"),
+    Decimal("0.75"),
+    Decimal("1.00"),
+)
+
+
+def age_bucket_rank(age: timedelta) -> int:
+    hours = age.total_seconds() / 3600
+    for index, boundary in enumerate(AGE_BUCKET_HOURS):
+        if hours < boundary:
+            return index
+    return len(AGE_BUCKET_HOURS)
+
+
+def age_bucket(age: timedelta) -> str:
+    labels = ("<4h", "4-12h", "12-24h", "24-48h", ">48h")
+    return labels[age_bucket_rank(age)]
+
 
 def age_weight(age: timedelta) -> Decimal:
-    hours = age.total_seconds() / 3600
-    if hours < 4:
-        return Decimal("0.00")
-    if hours < 12:
-        return Decimal("0.25")
-    if hours < 24:
-        return Decimal("0.50")
-    if hours < 48:
-        return Decimal("0.75")
-    return Decimal("1.00")
+    return AGE_BUCKET_WEIGHTS[age_bucket_rank(age)]
 
 
 def value_weight(purchase_price: Decimal) -> Decimal:
@@ -92,3 +108,39 @@ def calculate_priority(
 
 def effective_priority(calculated_priority: str, ops_override: str | None) -> str:
     return ops_override if ops_override else calculated_priority
+
+
+def is_stale(
+    *,
+    now: datetime,
+    created_at: datetime,
+    last_interaction_at: datetime,
+    status_updated_at: datetime | None,
+    priority_calculated_at: datetime | None,
+) -> bool:
+    if priority_calculated_at is None:
+        return True
+    if last_interaction_at > priority_calculated_at:
+        return True
+    if status_updated_at is not None and status_updated_at > priority_calculated_at:
+        return True
+    return age_bucket(now - created_at) != age_bucket(priority_calculated_at - created_at)
+
+
+def apply_calculated_priority(
+    conversation: Conversation, item: OrderItem, *, now: datetime
+) -> bool:
+    """Recalcula a prioridade persistida. Nao mexe em ops_override nem em eventos."""
+    calculated = calculate_priority(
+        reason=conversation.reason,
+        item_status=item.status,
+        created_at=conversation.created_at,
+        purchase_price=item.purchase_price,
+        now=now,
+    )
+    changed = calculated != conversation.calculated_priority
+    if changed:
+        conversation.calculated_priority = calculated
+        conversation.updated_at = now
+    conversation.priority_calculated_at = now
+    return changed
