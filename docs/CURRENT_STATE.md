@@ -2,7 +2,7 @@
 
 - **Versao**: 0.9.0
 - **Fase**: P7 Dashboard — COMPLETE
-- **Commit de referencia**: 6df71e2
+- **Commit de referencia**: 70a8fc5
 - **Repositório**: https://github.com/giordani-p/market-hub
 
 ## Do que se trata
@@ -241,6 +241,14 @@ Fases concluidas e validadas manualmente pelo usuario:
   usuario, pra alinhar com o padrao que status/prioridade/motivo ja
   usavam (traducao no frontend, nao no backend). Sem mudanca de contrato
   de backend nesta fase.
+- **F7 (Dashboard + gaps de jornada)**: home por papel em
+  `GET /v1/dashboard` (`/seller` e `/ops` no login; Buyer continua no
+  catalogo, com Inicio em `/buyer`). Catalogo compartilhado em `/catalog`
+  (compra so Buyer). Fila Ops em `/ops/queue`. Cancelamento do Buyer em
+  `placed`/`preparing`. Lista/detalhe Ops de Order Items
+  (`/ops/order-items`, historico de conversas sem Messages). Minhas
+  ofertas do Seller (`/seller/offers`, CRUD de Offer e Product). Nav em
+  PT-BR. Sem mudanca de contrato de backend.
 
 Gaps reais de contrato encontrados e resolvidos ate aqui: CORS ausente
 (F0), `BuyerOrderItem` sem produto em `GET /v1/orders` (F1),
@@ -250,7 +258,7 @@ proprio item (F5).
 
 Ainda nao existe: UI de Notifications push/real-time (fora de escopo,
 so poll); qualquer coisa alem do que este documento ja descreve. Ver
-`docs/FRONTEND_F6_SPEC.md` para o detalhe da ultima fase fechada.
+`docs/FRONTEND_F7_SPEC.md` para o detalhe da ultima fase fechada.
 
 ## Decisoes de contrato e de stack ja tomadas
 
@@ -359,18 +367,16 @@ Postgres no ar e nao sobe LocalStack.
 - Ops lendo Messages Buyer-Seller.
 - Pipeline de CI e qualquer artefato de deploy.
 - Cadastro publico de usuarios, refresh token e IdP.
-- Carrinho persistido, pagamentos, entrega, frontend.
+- Carrinho persistido, pagamentos, entrega.
 - Inbox global de frontend, KPIs/analytics, WebSocket/SSE.
 - Event bus, Outbox, Kafka, Redis ou observabilidade alem dos logs do Worker.
 - Soft delete ou diferenciacao entre excluir e deixar de disponibilizar.
 - Canais Email/Slack/WhatsApp e notificacoes de `MessageCreated`.
-- UI do Dashboard (backend `GET /v1/dashboard` ja existe).
 
 ## Proxima etapa
 
-UI do Dashboard em fase propria de frontend, consumindo `GET /v1/dashboard`.
-O roadmap F0-F6 ja esta completo. SLA e transcript Ops no backend continuam
-sem especificacao.
+SLA e transcript Ops no backend continuam sem especificacao. O roadmap
+frontend F0-F7 esta completo.
 
 ## Historico de versoes
 

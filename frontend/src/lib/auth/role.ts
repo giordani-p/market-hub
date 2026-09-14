@@ -3,9 +3,9 @@ import type { UserRole } from '../../types/auth'
 export function roleHomePath(role: UserRole): string {
   switch (role) {
     case 'buyer':
-      return '/buyer/catalog'
+      return '/catalog'
     case 'seller':
-      return '/seller/orders'
+      return '/seller'
     case 'ops':
       return '/ops'
   }

@@ -12,3 +12,7 @@ export function fetchOrder(orderId: string): Promise<Order> {
 export function createOrder(payload: CheckoutRequest): Promise<Order> {
   return apiRequest<Order>('/orders', { method: 'POST', body: payload })
 }
+
+export function cancelOrderItem(itemId: string): Promise<unknown> {
+  return apiRequest(`/order-items/${itemId}/cancel`, { method: 'POST' })
+}

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { Input } from '../../components/ui/Input'
@@ -10,7 +10,7 @@ import { Spinner } from '../../components/feedback/Spinner'
 import { formatCurrencyBRL, formatDate, toDayEndUTC, toDayStartUTC } from '../../lib/utils/format'
 import { useAsync } from '../../lib/utils/useAsync'
 import type { OrderItemStatus } from '../../types/order'
-import { fetchSellerOrderItems } from './api'
+import { fetchOpsOrderItems } from './api'
 
 const PAGE_SIZE = 20
 
@@ -23,23 +23,9 @@ const STATUS_OPTIONS: { value: OrderItemStatus | ''; label: string }[] = [
   { value: 'cancelled', label: 'Cancelado' },
 ]
 
-const STATUS_VALUES: OrderItemStatus[] = [
-  'placed',
-  'preparing',
-  'in_transit',
-  'delivered',
-  'cancelled',
-]
-
-function parseStatus(value: string | null): OrderItemStatus | '' {
-  return value && STATUS_VALUES.includes(value as OrderItemStatus)
-    ? (value as OrderItemStatus)
-    : ''
-}
-
-export function SellerOrdersListPage() {
-  const [searchParams, setSearchParams] = useSearchParams()
-  const status = parseStatus(searchParams.get('status'))
+export function OpsOrderItemsListPage() {
+  const [status, setStatus] = useState<OrderItemStatus | ''>('')
+  const [sellerId, setSellerId] = useState('')
   const [orderItemId, setOrderItemId] = useState('')
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
@@ -47,15 +33,16 @@ export function SellerOrdersListPage() {
 
   const state = useAsync(
     () =>
-      fetchSellerOrderItems({
+      fetchOpsOrderItems({
         page,
         pageSize: PAGE_SIZE,
         status: status || undefined,
+        sellerId: sellerId.trim() || undefined,
         orderItemId: orderItemId.trim() || undefined,
         from: fromDate ? toDayStartUTC(fromDate) : undefined,
         to: toDate ? toDayEndUTC(toDate) : undefined,
       }),
-    [page, status, orderItemId, fromDate, toDate],
+    [page, status, sellerId, orderItemId, fromDate, toDate],
   )
 
   function updateFilter<T>(setter: (value: T) => void) {
@@ -65,28 +52,12 @@ export function SellerOrdersListPage() {
     }
   }
 
-  function updateStatus(value: OrderItemStatus | '') {
-    setSearchParams(
-      (current) => {
-        const next = new URLSearchParams(current)
-        if (value) {
-          next.set('status', value)
-        } else {
-          next.delete('status')
-        }
-        return next
-      },
-      { replace: true },
-    )
-    setPage(1)
-  }
-
   const total = state.status === 'success' ? state.data.total : 0
   const hasNextPage = page * PAGE_SIZE < total
 
   return (
-    <div className="page">
-      <h1>Meus Order Items</h1>
+    <div className="page page-wide">
+      <h1>Pedidos</h1>
 
       <div className="filters">
         <label className="field">
@@ -94,7 +65,9 @@ export function SellerOrdersListPage() {
           <select
             className="input"
             value={status}
-            onChange={(event) => updateStatus(event.target.value as OrderItemStatus | '')}
+            onChange={(event) =>
+              updateFilter(setStatus)(event.target.value as OrderItemStatus | '')
+            }
           >
             {STATUS_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -103,6 +76,13 @@ export function SellerOrdersListPage() {
             ))}
           </select>
         </label>
+        <Input
+          label="Seller (UUID)"
+          name="sellerId"
+          value={sellerId}
+          onChange={(event) => updateFilter(setSellerId)(event.target.value)}
+          placeholder="UUID completo do Seller"
+        />
         <Input
           label="ID do item (exato)"
           name="orderItemId"
@@ -138,12 +118,13 @@ export function SellerOrdersListPage() {
             {state.data.items.map((item) => (
               <Link
                 key={item.order_item_id}
-                to={`/seller/orders/${item.order_item_id}`}
+                to={`/ops/order-items/${item.order_item_id}`}
                 className="product-link"
               >
                 <Card>
                   <div className="order-item-row">
                     <span>{item.product.name}</span>
+                    <span className="text-muted">{item.seller.name}</span>
                     <span className="text-muted">{item.buyer.name}</span>
                     <span className="text-muted">x{item.quantity}</span>
                     <span>{formatCurrencyBRL(item.purchase_price)}</span>

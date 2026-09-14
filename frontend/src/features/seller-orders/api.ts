@@ -46,6 +46,4 @@ export function advanceOrderItemStatus(itemId: string, status: OrderItemStatus):
   return apiRequest(`/order-items/${itemId}`, { method: 'PATCH', body: { status } })
 }
 
-export function cancelOrderItem(itemId: string): Promise<unknown> {
-  return apiRequest(`/order-items/${itemId}/cancel`, { method: 'POST' })
-}
+export { cancelOrderItem } from '../orders/api'

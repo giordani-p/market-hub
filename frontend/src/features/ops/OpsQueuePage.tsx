@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { Input } from '../../components/ui/Input'
@@ -21,10 +21,17 @@ const PRIORITY_OPTIONS: { value: EffectivePriority | ''; label: string }[] = [
   ...EFFECTIVE_PRIORITIES.map((value) => ({ value, label: PRIORITY_LABELS[value] })),
 ]
 
+function parsePriority(value: string | null): EffectivePriority | '' {
+  return value && EFFECTIVE_PRIORITIES.includes(value as EffectivePriority)
+    ? (value as EffectivePriority)
+    : ''
+}
+
 export function OpsQueuePage() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const effectivePriority = parsePriority(searchParams.get('effective_priority'))
   const [sellerId, setSellerId] = useState('')
   const [orderItemId, setOrderItemId] = useState('')
-  const [effectivePriority, setEffectivePriority] = useState<EffectivePriority | ''>('')
   const [page, setPage] = useState(1)
 
   const state = useAsync(
@@ -44,6 +51,22 @@ export function OpsQueuePage() {
       setter(value)
       setPage(1)
     }
+  }
+
+  function updatePriority(value: EffectivePriority | '') {
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current)
+        if (value) {
+          next.set('effective_priority', value)
+        } else {
+          next.delete('effective_priority')
+        }
+        return next
+      },
+      { replace: true },
+    )
+    setPage(1)
   }
 
   const total = state.status === 'success' ? state.data.total : 0
@@ -74,7 +97,7 @@ export function OpsQueuePage() {
             className="input"
             value={effectivePriority}
             onChange={(event) =>
-              updateFilter(setEffectivePriority)(event.target.value as EffectivePriority | '')
+              updatePriority(event.target.value as EffectivePriority | '')
             }
           >
             {PRIORITY_OPTIONS.map((option) => (
