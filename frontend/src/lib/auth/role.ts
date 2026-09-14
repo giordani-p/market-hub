@@ -5,7 +5,7 @@ export function roleHomePath(role: UserRole): string {
     case 'buyer':
       return '/buyer/catalog'
     case 'seller':
-      return '/seller'
+      return '/seller/orders'
     case 'ops':
       return '/ops'
   }

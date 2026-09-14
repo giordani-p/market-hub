@@ -1,8 +1,8 @@
 # Estado atual do projeto
 
 - **Versao**: 0.8.0
-- **Fase**: F.0 — COMPLETE (Foundation Frontend)
-- **Commit de referencia**: 7ae5acc
+- **Fase**: F.1 — COMPLETE (Frontend Buyer Catalog + Purchase)
+- **Commit de referencia**: 1ee6ddd
 - **Repositório**: https://github.com/giordani-p/market-hub
 
 ## Do que se trata

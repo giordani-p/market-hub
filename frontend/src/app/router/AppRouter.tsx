@@ -6,6 +6,8 @@ import { ProductListPage } from '../../features/catalog/ProductListPage'
 import { LoginPage } from '../../features/auth/LoginPage'
 import { OrderDetailPage } from '../../features/orders/OrderDetailPage'
 import { OrdersListPage } from '../../features/orders/OrdersListPage'
+import { SellerOrderItemDetailPage } from '../../features/seller-orders/SellerOrderItemDetailPage'
+import { SellerOrdersListPage } from '../../features/seller-orders/SellerOrdersListPage'
 import { roleHomePath } from '../../lib/auth/role'
 import { AppLayout } from '../layout/AppLayout'
 import { NotFoundPage } from '../layout/NotFoundPage'
@@ -66,7 +68,8 @@ export function AppRouter() {
           <Route path="/buyer/catalog/:productId" element={<ProductDetailPage />} />
           <Route path="/buyer/orders" element={<OrdersListPage />} />
           <Route path="/buyer/orders/:orderId" element={<OrderDetailPage />} />
-          <Route path="/seller" element={<RoleHomePage role="seller" />} />
+          <Route path="/seller/orders" element={<SellerOrdersListPage />} />
+          <Route path="/seller/orders/:itemId" element={<SellerOrderItemDetailPage />} />
           <Route path="/ops" element={<RoleHomePage role="ops" />} />
         </Route>
         <Route path="*" element={<NotFoundPage />} />
