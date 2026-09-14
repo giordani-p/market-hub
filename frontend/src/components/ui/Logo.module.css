@@ -1,0 +1,46 @@
+/*
+ * Marca do Market Hub: quadrado do azul de acao com a sacola, mais o
+ * wordmark. O mesmo simbolo do favicon.
+ *
+ * A cor do wordmark vem de `currentColor`: no header ele e azul, sobre o
+ * painel amarelo do login ele e o texto escuro da marca. Quem decide e o
+ * contexto, nao o componente.
+ */
+.logo {
+  display: inline-flex;
+  align-items: center;
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+  white-space: nowrap;
+}
+
+.mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-primary-fg);
+  flex-shrink: 0;
+}
+
+.sm {
+  gap: var(--space-2);
+  font-size: var(--font-size-subtitle);
+}
+
+.sm .mark {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.md {
+  gap: var(--space-3);
+  font-size: var(--font-size-h4);
+}
+
+.md .mark {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-lg);
+}

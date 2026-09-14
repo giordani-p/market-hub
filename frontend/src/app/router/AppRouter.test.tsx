@@ -31,7 +31,7 @@ describe('AppRouter — guarda de rota', () => {
 
     render(<AppRouter />)
 
-    expect(screen.getByRole('heading', { name: 'Market Hub' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Entrar' })).toBeInTheDocument()
     expect(screen.getByLabelText('Email')).toBeInTheDocument()
   })
 

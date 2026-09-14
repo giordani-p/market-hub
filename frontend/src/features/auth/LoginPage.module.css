@@ -1,32 +1,101 @@
-.loginPage {
+/*
+ * Login em duas colunas: painel de marca a esquerda, formulario a direita.
+ *
+ * O painel existe para dizer o que e o produto antes de pedir credencial --
+ * quem chega aqui pela primeira vez so via um card solto no cinza. Abaixo
+ * de 900px ele encolhe para uma faixa de topo: em telefone, o que importa
+ * e o campo de email na primeira dobra.
+ */
+.page {
+  display: grid;
+  /* O painel de marca fica um pouco menor que o lado do formulario: o
+     amarelo e identidade, nao o assunto da tela. */
+  grid-template-columns: 0.85fr 1fr;
+  min-height: 100vh;
+}
+
+/* ---------- Painel de marca ---------- */
+
+.brand {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
-  padding: var(--space-4);
+  padding: var(--space-16) var(--space-8);
+  background: var(--color-brand);
+  color: var(--color-brand-fg);
+}
+
+/* Bloco de conteudo centrado dentro do painel, para o texto nao colar na
+   borda esquerda em tela larga. */
+.brandInner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  width: 100%;
+  max-width: 26rem;
+}
+
+.headline {
+  font-size: var(--font-size-h1);
+  line-height: var(--line-height-tight);
+  max-width: 18ch;
+}
+
+.benefits {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-width: 38ch;
+}
+
+.benefit {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  font-size: var(--font-size-body-sm);
+}
+
+.benefitIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-md);
+  /* Superficie clara sobre o amarelo, em vez de sombra. */
+  background: color-mix(in srgb, var(--color-surface) 70%, transparent);
+  flex-shrink: 0;
+}
+
+/* ---------- Formulario ---------- */
+
+.formSide {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8) var(--space-4);
+  background: var(--color-canvas);
 }
 
 .card {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-6);
   width: 100%;
-  max-width: 22rem;
+  max-width: 24rem;
   padding: var(--space-8);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-top: 4px solid var(--color-brand);
   border-radius: var(--radius-lg);
 }
 
-.brand {
+.heading {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-}
-
-.title {
-  color: var(--color-primary);
 }
 
 .subtitle {
@@ -34,7 +103,89 @@
   font-size: var(--font-size-body-sm);
 }
 
-.error {
-  color: var(--color-danger);
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* Erro de credencial e banner, nao uma linha solta: e a unica coisa que a
+   pessoa precisa ver quando a tentativa falha. */
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid color-mix(in srgb, var(--color-danger) 35%, var(--color-border));
+  border-left: 4px solid var(--color-danger);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-danger) 6%, var(--color-surface));
+  color: var(--color-fg);
   font-size: var(--font-size-body-sm);
+}
+
+.alertIcon {
+  color: var(--color-danger);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.toggleVisibility {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.toggleVisibility:hover {
+  background: var(--color-surface-subtle);
+  color: var(--color-fg);
+}
+
+.footnote {
+  color: var(--color-muted);
+  font-size: var(--font-size-caption);
+  text-align: center;
+}
+
+/* ---------- Abaixo de lg: faixa de topo ---------- */
+
+@media (max-width: 1023px) {
+  .page {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+
+  .brand {
+    padding: var(--space-6) var(--space-4);
+    text-align: center;
+  }
+
+  .brandInner {
+    gap: var(--space-3);
+    align-items: center;
+  }
+
+  .headline {
+    font-size: var(--font-size-h4);
+    max-width: none;
+  }
+
+  /* Os beneficios saem: em telefone, empurrariam o campo de email para
+     fora da primeira dobra. */
+  .benefits {
+    display: none;
+  }
+
+  .formSide {
+    padding: var(--space-6) var(--space-4);
+    align-items: flex-start;
+  }
 }
