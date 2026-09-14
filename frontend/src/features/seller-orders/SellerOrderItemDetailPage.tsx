@@ -1,11 +1,13 @@
 import { useParams } from 'react-router-dom'
 import { Card } from '../../components/ui/Card'
-import { StatusBadge } from '../../components/ui/StatusBadge'
 import { ErrorState } from '../../components/feedback/ErrorState'
 import { Spinner } from '../../components/feedback/Spinner'
+import { ConversationPanel } from '../conversations/ConversationPanel'
+import { InternalCommentsPanel } from '../support/InternalCommentsPanel'
 import { formatCurrencyBRL, formatDate } from '../../lib/utils/format'
 import { useAsync } from '../../lib/utils/useAsync'
 import { fetchSellerOrderItem } from './api'
+import { StatusActions } from './StatusActions'
 
 export function SellerOrderItemDetailPage() {
   const { itemId } = useParams<{ itemId: string }>()
@@ -21,17 +23,14 @@ export function SellerOrderItemDetailPage() {
   const item = state.data
 
   return (
-    <div className="page">
+    <div className="page page-wide">
       <h1>{item.product.name}</h1>
       {item.product.description && <p className="text-muted">{item.product.description}</p>}
 
+      <StatusActions itemId={item.id} status={item.status} onChanged={state.retry} />
+
       <Card>
         <dl className="detail-list">
-          <dt>Status</dt>
-          <dd>
-            <StatusBadge status={item.status} />
-          </dd>
-
           <dt>Buyer</dt>
           <dd>{item.buyer.name}</dd>
 
@@ -51,9 +50,10 @@ export function SellerOrderItemDetailPage() {
         </dl>
       </Card>
 
-      <p className="text-muted">
-        Atualização de status, cancelamento e comunicação com o Buyer chegam na próxima fase.
-      </p>
+      <div className="detail-columns">
+        <ConversationPanel itemId={item.id} viewerRole="seller" />
+        <InternalCommentsPanel itemId={item.id} />
+      </div>
     </div>
   )
 }

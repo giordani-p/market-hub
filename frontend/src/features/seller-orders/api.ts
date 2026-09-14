@@ -1,5 +1,6 @@
 import { apiRequest } from '../../lib/api/client'
 import type {
+  OrderItemStatus,
   SellerOrderItemDetail,
   SellerOrderItemFilters,
   SellerOrderItemListResponse,
@@ -39,4 +40,12 @@ export function fetchSellerOrderItems(
 
 export function fetchSellerOrderItem(itemId: string): Promise<SellerOrderItemDetail> {
   return apiRequest<SellerOrderItemDetail>(`/order-items/${itemId}`)
+}
+
+export function advanceOrderItemStatus(itemId: string, status: OrderItemStatus): Promise<unknown> {
+  return apiRequest(`/order-items/${itemId}`, { method: 'PATCH', body: { status } })
+}
+
+export function cancelOrderItem(itemId: string): Promise<unknown> {
+  return apiRequest(`/order-items/${itemId}/cancel`, { method: 'POST' })
 }

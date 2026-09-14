@@ -1,8 +1,8 @@
 # Estado atual do projeto
 
 - **Versao**: 0.8.0
-- **Fase**: F.1 — COMPLETE (Frontend Buyer Catalog + Purchase)
-- **Commit de referencia**: 1ee6ddd
+- **Fase**: F.2 — COMPLETE (Frontend Seller Orders)
+- **Commit de referencia**: 79f3dce
 - **Repositório**: https://github.com/giordani-p/market-hub
 
 ## Do que se trata
@@ -78,50 +78,50 @@ a fila Ops pode ficar ate cerca de 15 minutos defasada.
 
 Rotas implementadas, todas sob o prefixo `/v1`:
 
-| Rota                                                            | Resposta                                                     |
-| --------------------------------------------------------------- | ------------------------------------------------------------ |
-| `GET /v1/health`                                                | `HealthResponse` (`status`, `version`)                       |
-| `POST /v1/auth/login`                                           | `TokenResponse`; `401 unauthorized` se a senha falhar        |
-| `GET /v1/auth/me`                                               | `User` autenticado, inclusive `name`                         |
-| `GET /v1/products`                                              | array de `Product`                                           |
-| `POST /v1/products`                                             | `201` + `Product`                                            |
-| `GET /v1/products/{product_id}`                                 | `Product`                                                    |
-| `PATCH /v1/products/{product_id}`                               | `Product`                                                    |
-| `DELETE /v1/products/{product_id}`                              | `204`; `409` se o produto ainda tiver ofertas                |
-| `GET /v1/offers`                                                | array de `Offer`; filtro opcional `?seller_id=` (publico)    |
-| `POST /v1/offers`                                               | `201` + `Offer`; `seller_id` vem do JWT de seller            |
-| `GET /v1/offers/{offer_id}`                                     | `Offer`                                                      |
-| `PATCH /v1/offers/{offer_id}`                                   | `Offer` do seller autenticado                                |
-| `DELETE /v1/offers/{offer_id}`                                  | `204`; `409` se houver order items                           |
-| `POST /v1/orders`                                               | checkout atomico; `201` + `Order` ou `409 checkout_rejected` |
-| `GET /v1/orders`                                                | orders do buyer autenticado, items com produto (`BuyerOrderItem`) |
+| Rota                                                            | Resposta                                                           |
+| --------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `GET /v1/health`                                                | `HealthResponse` (`status`, `version`)                             |
+| `POST /v1/auth/login`                                           | `TokenResponse`; `401 unauthorized` se a senha falhar              |
+| `GET /v1/auth/me`                                               | `User` autenticado, inclusive `name`                               |
+| `GET /v1/products`                                              | array de `Product`                                                 |
+| `POST /v1/products`                                             | `201` + `Product`                                                  |
+| `GET /v1/products/{product_id}`                                 | `Product`                                                          |
+| `PATCH /v1/products/{product_id}`                               | `Product`                                                          |
+| `DELETE /v1/products/{product_id}`                              | `204`; `409` se o produto ainda tiver ofertas                      |
+| `GET /v1/offers`                                                | array de `Offer`; filtro opcional `?seller_id=` (publico)          |
+| `POST /v1/offers`                                               | `201` + `Offer`; `seller_id` vem do JWT de seller                  |
+| `GET /v1/offers/{offer_id}`                                     | `Offer`                                                            |
+| `PATCH /v1/offers/{offer_id}`                                   | `Offer` do seller autenticado                                      |
+| `DELETE /v1/offers/{offer_id}`                                  | `204`; `409` se houver order items                                 |
+| `POST /v1/orders`                                               | checkout atomico; `201` + `Order` ou `409 checkout_rejected`       |
+| `GET /v1/orders`                                                | orders do buyer autenticado, items com produto (`BuyerOrderItem`)  |
 | `GET /v1/orders/{order_id}`                                     | `Order` do buyer autenticado, items com produto (`BuyerOrderItem`) |
-| `GET /v1/order-items`                                           | envelope paginado dos items do seller autenticado            |
-| `GET /v1/order-items/{item_id}`                                 | detalhe do seller (`product`, `buyer`, `order`, `offer_id`)  |
-| `PATCH /v1/order-items/{item_id}`                               | avanca status no fluxo; mesmo status e idempotente           |
-| `POST /v1/order-items/{item_id}/cancel`                         | cancela conforme o papel; cancel repetido e idempotente      |
-| `POST /v1/order-items/{item_id}/internal-comments`              | `201` InternalComment do Seller no proprio item              |
-| `GET /v1/order-items/{item_id}/internal-comments`               | array cronologico do Seller no proprio item                  |
-| `POST /v1/order-items/{item_id}/conversation`                   | `201` nova ou `200` OPEN reutilizada                         |
-| `GET /v1/order-items/{item_id}/conversations`                   | array por `last_interaction_at DESC`                         |
-| `GET /v1/conversations/{conversation_id}`                       | Conversation do participante                                 |
-| `POST /v1/conversations/{conversation_id}/close`                | Seller fecha; ja `closed` responde `409`                     |
-| `POST /v1/conversations/{conversation_id}/messages`             | `201` Message em Conversation `open`                         |
-| `GET /v1/conversations/{conversation_id}/messages`              | janela de 24h UTC (`from`, `to`, `has_older`)                |
-| `GET /v1/ops/order-items`                                       | envelope paginado de todos os items (Ops)                    |
-| `GET /v1/ops/order-items/{item_id}`                             | detalhe Ops (`product`, `buyer`, `seller`, `order`)          |
-| `POST /v1/ops/order-items/{item_id}/internal-comments`          | `201` InternalComment do Ops                                 |
-| `GET /v1/ops/order-items/{item_id}/internal-comments`           | array cronologico (mesmo historico do Seller)                |
-| `GET /v1/ops/order-items/{item_id}/conversations`               | historico open+closed do item, com prioridade                |
-| `GET /v1/ops/conversations`                                     | fila OPEN paginada por `effective_priority`                  |
-| `GET /v1/ops/conversations/{conversation_id}`                   | Conversation Ops com prioridade persistida                   |
-| `POST /v1/ops/conversations/{conversation_id}/priority/refresh` | recalcula `calculated_priority`                              |
-| `POST /v1/ops/conversations/{conversation_id}/critical`         | override `critical` + InternalComment                        |
-| `POST /v1/ops/conversations/{conversation_id}/critical/remove`  | remove override                                              |
-| `GET /v1/notifications`                                         | envelope paginado das Notifications do usuario               |
-| `GET /v1/notifications/unread-count`                            | `{ unread_count }` do usuario autenticado                    |
-| `PATCH /v1/notifications/{notification_id}/read`                | `200` Notification; alheia → `404`                           |
-| `PATCH /v1/notifications/read-all`                              | `204`; idempotente                                           |
+| `GET /v1/order-items`                                           | envelope paginado dos items do seller autenticado                  |
+| `GET /v1/order-items/{item_id}`                                 | detalhe do seller (`product`, `buyer`, `order`, `offer_id`)        |
+| `PATCH /v1/order-items/{item_id}`                               | avanca status no fluxo; mesmo status e idempotente                 |
+| `POST /v1/order-items/{item_id}/cancel`                         | cancela conforme o papel; cancel repetido e idempotente            |
+| `POST /v1/order-items/{item_id}/internal-comments`              | `201` InternalComment do Seller no proprio item                    |
+| `GET /v1/order-items/{item_id}/internal-comments`               | array cronologico do Seller no proprio item                        |
+| `POST /v1/order-items/{item_id}/conversation`                   | `201` nova ou `200` OPEN reutilizada                               |
+| `GET /v1/order-items/{item_id}/conversations`                   | array por `last_interaction_at DESC`                               |
+| `GET /v1/conversations/{conversation_id}`                       | Conversation do participante                                       |
+| `POST /v1/conversations/{conversation_id}/close`                | Seller fecha; ja `closed` responde `409`                           |
+| `POST /v1/conversations/{conversation_id}/messages`             | `201` Message em Conversation `open`                               |
+| `GET /v1/conversations/{conversation_id}/messages`              | janela de 24h UTC (`from`, `to`, `has_older`)                      |
+| `GET /v1/ops/order-items`                                       | envelope paginado de todos os items (Ops)                          |
+| `GET /v1/ops/order-items/{item_id}`                             | detalhe Ops (`product`, `buyer`, `seller`, `order`)                |
+| `POST /v1/ops/order-items/{item_id}/internal-comments`          | `201` InternalComment do Ops                                       |
+| `GET /v1/ops/order-items/{item_id}/internal-comments`           | array cronologico (mesmo historico do Seller)                      |
+| `GET /v1/ops/order-items/{item_id}/conversations`               | historico open+closed do item, com prioridade                      |
+| `GET /v1/ops/conversations`                                     | fila OPEN paginada por `effective_priority`                        |
+| `GET /v1/ops/conversations/{conversation_id}`                   | Conversation Ops com prioridade persistida                         |
+| `POST /v1/ops/conversations/{conversation_id}/priority/refresh` | recalcula `calculated_priority`                                    |
+| `POST /v1/ops/conversations/{conversation_id}/critical`         | override `critical` + InternalComment                              |
+| `POST /v1/ops/conversations/{conversation_id}/critical/remove`  | remove override                                                    |
+| `GET /v1/notifications`                                         | envelope paginado das Notifications do usuario                     |
+| `GET /v1/notifications/unread-count`                            | `{ unread_count }` do usuario autenticado                          |
+| `PATCH /v1/notifications/{notification_id}/read`                | `200` Notification; alheia → `404`                                 |
+| `PATCH /v1/notifications/read-all`                              | `204`; idempotente                                                 |
 
 `GET /v1/order-items` aceita `page`, `page_size` (padrao 20, maximo 100),
 `status`, `from`, `to` e `order_item_id`. Ordenacao `created_at DESC`. Lista
