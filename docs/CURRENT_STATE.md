@@ -1,8 +1,8 @@
 # Estado atual do projeto
 
-- **Versao**: 0.8.0
-- **Fase**: Frontend F.4 — COMPLETE (Ops Experience)
-- **Commit de referencia**: 5b47254
+- **Versao**: 0.9.0
+- **Fase**: P7 Dashboard — COMPLETE
+- **Commit de referencia**: 6df71e2
 - **Repositório**: https://github.com/giordani-p/market-hub
 
 ## Do que se trata
@@ -22,7 +22,9 @@ em `docs/P5.3_Resultado.md`. A fase P6.1, especificada em
 `docs/P6.1_Foundation_Worker.md`, adiciona a fundacao de Jobs (SQS + Worker) e o
 recalculo periodico de prioridade. A fase P6.2, especificada em
 `docs/P6.2_Notification.md`, adiciona Notifications in-app via o Job
-`NOTIFY_STATUS_CHANGE`. O plano da fase nao deve ser copiado para ca: este
+`NOTIFY_STATUS_CHANGE`. A fase P7, especificada em `docs/P7_Dashboard.md`,
+adiciona `GET /v1/dashboard` como capability de leitura por papel, sem
+persistencia propria. O plano da fase nao deve ser copiado para ca: este
 documento descreve o que **existe hoje**.
 
 ## Arquitetura
@@ -68,6 +70,7 @@ a fila Ops pode ficar ate cerca de 15 minutos defasada.
 | `app/support/`       | listagem/detalhe Ops, InternalComment, fila e override critical                         |
 | `app/jobs/`          | Job, registry, adapter SQS, Worker e enqueue                                            |
 | `app/notifications/` | Notification in-app, canal, service, Job `NOTIFY_STATUS_CHANGE` e rotas                 |
+| `app/dashboard/`     | Capability de leitura `GET /v1/dashboard` (projecao Seller/Buyer/Ops)                   |
 | `api/openapi.yaml`   | contrato da API escrito a mao                                                           |
 | `infra/local/`       | provisionamento LocalStack (filas, DLQ, EventBridge Rule)                               |
 | `migrations/`        | Alembic `001`–`008` (notifications `008`)                                               |
@@ -122,6 +125,7 @@ Rotas implementadas, todas sob o prefixo `/v1`:
 | `GET /v1/notifications/unread-count`                            | `{ unread_count }` do usuario autenticado                          |
 | `PATCH /v1/notifications/{notification_id}/read`                | `200` Notification; alheia → `404`                                 |
 | `PATCH /v1/notifications/read-all`                              | `204`; idempotente                                                 |
+| `GET /v1/dashboard`                                             | projecao por papel (`seller`/`buyer`/`ops`); empty state e `200`   |
 
 `GET /v1/order-items` aceita `page`, `page_size` (padrao 20, maximo 100),
 `status`, `from`, `to` e `order_item_id`. Ordenacao `created_at DESC`. Lista
@@ -134,6 +138,13 @@ e depois `last_interaction_at DESC`, e aceita `seller_id`, `order_item_id` e
 
 `GET /v1/notifications` usa `page`/`page_size` (padrao 20, maximo 100),
 ordena `created_at DESC` e isola por `recipient_id` do JWT.
+
+`GET /v1/dashboard` nao aceita query params: o escopo sai do JWT. Seller
+agrega Order Items via `Offer.seller_id`; Buyer agrega Orders via
+`buyer_id`; Ops ve Conversations `open` pela mesma ordem da fila
+(`effective_priority`, depois `last_interaction_at DESC`). Empty state
+responde `200` com zeros e listas vazias. Role fora de buyer/seller/ops
+responde `403`. Sem token, `401`.
 
 `GET /v1/conversations/{id}/messages` aceita `before` (date-time com timezone,
 nao futuro). Sem `before`, retorna as Messages das ultimas 24h.
@@ -205,13 +216,41 @@ Fases concluidas e validadas manualmente pelo usuario:
   versoes`); `ConversationPanel` (Buyer e Seller) mostra isso via
   `PriorityBadge`, agora em `components/ui/` por ser reaproveitado entre
   `features/conversations` e `features/ops`.
+- **F5 (Notifications)**: `NotificationBell` no `AppLayout` (contagem de
+  nao lidas, dropdown paginado, marcar uma/todas como lidas) e
+  `features/notifications/resolveRoute.ts` (funcao pura que resolve a
+  rota certa por papel + `entity_type`, com os fetches injetados por
+  parametro pra ficar testavel). Gap real de contrato encontrado e
+  resolvido na mesma fase: o deep link do Buyer precisa de `order_id`, que
+  nao existia em nenhum lugar acessivel a ele —
+  `GET /v1/order-items/{item_id}` passou a aceitar Buyer tambem (so
+  leitura do proprio item; a listagem continua exclusiva do Seller).
+- **F6 (Design Review + UX Polish + Notifications PT-BR)**: revisao de
+  todas as telas F0-F5 contra a skill de projeto
+  `frontend-design-patterns`; `lucide-react` adicionado (unica lib de
+  icones do projeto, no lugar de emoji cru); variante `destructive` nova
+  no `Button` pra acoes irreversiveis (cancelar pedido, encerrar
+  conversa); dark mode automatico (`prefers-color-scheme`) **removido** —
+  tema unico claro, decisao do usuario (a skill e o Mercado Livre real nao
+  tem dark mode); `--color-danger` alinhado ao `--color-error` da skill,
+  com `--color-danger-solid` novo pra preenchimento solido + texto branco
+  (o hex puro da skill fica abaixo do contraste WCAG AA nesse uso).
+  Notification (F5) passou a montar `title`/`message` no frontend a partir
+  de `type` + `metadata`, em portugues (`features/notifications/copy.ts`)
+  — antes exibia o texto pronto do backend, em ingles; decisao do
+  usuario, pra alinhar com o padrao que status/prioridade/motivo ja
+  usavam (traducao no frontend, nao no backend). Sem mudanca de contrato
+  de backend nesta fase.
 
 Gaps reais de contrato encontrados e resolvidos ate aqui: CORS ausente
-(F0), `BuyerOrderItem` sem produto em `GET /v1/orders` (F1) e
-`effective_priority` ausente em `ConversationResponse` (F4).
+(F0), `BuyerOrderItem` sem produto em `GET /v1/orders` (F1),
+`effective_priority` ausente em `ConversationResponse` (F4) e
+`GET /v1/order-items/{item_id}` restrito ao Seller, sem acesso do Buyer ao
+proprio item (F5).
 
-Ainda nao existe: UI de Notifications (F5) e o polish/responsividade final
-(F6). Ver `docs/FRONTEND_F4_SPEC.md` para o detalhe da ultima fase fechada.
+Ainda nao existe: UI de Notifications push/real-time (fora de escopo,
+so poll); qualquer coisa alem do que este documento ja descreve. Ver
+`docs/FRONTEND_F6_SPEC.md` para o detalhe da ultima fase fechada.
 
 ## Decisoes de contrato e de stack ja tomadas
 
@@ -321,19 +360,31 @@ Postgres no ar e nao sobe LocalStack.
 - Pipeline de CI e qualquer artefato de deploy.
 - Cadastro publico de usuarios, refresh token e IdP.
 - Carrinho persistido, pagamentos, entrega, frontend.
-- Inbox global de frontend, dashboard/KPIs, WebSocket/SSE.
+- Inbox global de frontend, KPIs/analytics, WebSocket/SSE.
 - Event bus, Outbox, Kafka, Redis ou observabilidade alem dos logs do Worker.
 - Soft delete ou diferenciacao entre excluir e deixar de disponibilizar.
 - Canais Email/Slack/WhatsApp e notificacoes de `MessageCreated`.
+- UI do Dashboard (backend `GET /v1/dashboard` ja existe).
 
 ## Proxima etapa
 
-Frontend F5 — Notifications (`docs/FRONTEND_F5_SPEC.md`, a ser criada),
-sobre a base entregue no F4. SLA e transcript Ops no backend continuam sem
-especificacao.
+UI do Dashboard em fase propria de frontend, consumindo `GET /v1/dashboard`.
+O roadmap F0-F6 ja esta completo. SLA e transcript Ops no backend continuam
+sem especificacao.
 
 ## Historico de versoes
 
+- **0.9.0** — P7 Dashboard: `GET /v1/dashboard` projeta Summary/Attention/Recent
+  por papel (Seller em Order Items, Buyer em Orders, Ops na fila de prioridade),
+  sem tabela nem agregado proprio. Contrato discriminado por `role` em
+  `api/openapi.yaml`; queries agregadas no banco; helper `preview_open_queue`.
+- **0.8.0** — F6 (Design Review + UX Polish + Notifications PT-BR)
+  mergeado na main (PR #15, commit `6df71e2`): dark mode removido,
+  `lucide-react` adicionado, variante `destructive` no `Button`, copy de
+  Notification em portugues, ajustes de contraste/paleta contra a skill
+  `frontend-design-patterns`. Sem mudanca de contrato de backend.
+- **0.8.0** — F5 (Notifications) mergeado na main (PR #14, commit
+  `a0d2338`): `NotificationBell`, deep link por papel + `entity_type`.
 - **0.8.0** — `GET /v1/order-items/{item_id}` passou a aceitar Buyer (so
   leitura do proprio item), nao so Seller (`api/openapi.yaml`,
   `app/orders/access.py`/`routes.py`), gap real achado revisando o contrato

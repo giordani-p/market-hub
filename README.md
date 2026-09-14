@@ -15,9 +15,11 @@ fecha e verifica a P5. A P6.1, especificada em
 [`docs/P6.1_Foundation_Worker.md`](docs/P6.1_Foundation_Worker.md), adiciona Jobs em
 background e o recalculo periodico de prioridade. A P6.2, especificada em
 [`docs/P6.2_Notification.md`](docs/P6.2_Notification.md), adiciona Notifications
-in-app sobre essa fundacao.
+in-app sobre essa fundacao. A P7, especificada em
+[`docs/P7_Dashboard.md`](docs/P7_Dashboard.md), adiciona
+`GET /v1/dashboard` como visao de leitura por papel.
 
-## Escopo atual (P6.2)
+## Escopo atual (P7)
 
 A v0 implementou o **Catalogo**. A P2 adicionou **Order**, JWT e estoque
 atomico. A P3, especificada em [`docs/P3_Seller_Journey.md`](docs/P3_Seller_Journey.md),
@@ -29,7 +31,8 @@ adiciona Ops em `/v1/ops` e InternalComment. A P5.2, especificada em
 e expoe a fila de Conversations OPEN. A P5.3 confirma o fechamento da P5.
 A P6.1 adiciona Worker SQS, EventBridge Rule local e reconcilacao periodica
 de prioridade. A P6.2 adiciona Notifications in-app (status para Buyer+Seller,
-prioridade efetiva para Seller+Ops). Sem frontend, realtime ou dashboard.
+prioridade efetiva para Seller+Ops). A P7 adiciona `GET /v1/dashboard` para
+Buyer, Seller e Ops, sem persistencia propria. Sem realtime.
 
 O estado atual do codigo esta em [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md).
 

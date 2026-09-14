@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: Market Hub API
-  description: Market Hub backend. Catalog, Order, Communication, Support/Ops and Notifications.
-  version: 0.8.0
+  description: Market Hub backend. Catalog, Order, Communication, Support/Ops, Notifications and Dashboard.
+  version: 0.9.0
 paths:
   /v1/health:
     get:
@@ -1105,6 +1105,34 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /v1/dashboard:
+    get:
+      tags:
+        - dashboard
+      summary: Return the dashboard projection for the authenticated user
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Dashboard projection for the authenticated role
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/SellerDashboard"
+                  - $ref: "#/components/schemas/BuyerDashboard"
+                  - $ref: "#/components/schemas/OpsDashboard"
+                discriminator:
+                  propertyName: role
+                  mapping:
+                    seller: "#/components/schemas/SellerDashboard"
+                    buyer: "#/components/schemas/BuyerDashboard"
+                    ops: "#/components/schemas/OpsDashboard"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
 components:
   securitySchemes:
     BearerAuth:
@@ -1200,7 +1228,7 @@ components:
           example: ok
         version:
           type: string
-          example: 0.8.0
+          example: 0.9.0
 
     ErrorResponse:
       description: Business error raised by the application.
@@ -2283,3 +2311,319 @@ components:
         unread_count:
           type: integer
           minimum: 0
+
+    OrderItemsByStatus:
+      type: object
+      additionalProperties: false
+      required:
+        - placed
+        - preparing
+        - in_transit
+        - delivered
+        - cancelled
+      properties:
+        placed:
+          type: integer
+          minimum: 0
+        preparing:
+          type: integer
+          minimum: 0
+        in_transit:
+          type: integer
+          minimum: 0
+        delivered:
+          type: integer
+          minimum: 0
+        cancelled:
+          type: integer
+          minimum: 0
+
+    ConversationsByPriority:
+      type: object
+      additionalProperties: false
+      required:
+        - critical
+        - high
+        - medium
+        - low
+      properties:
+        critical:
+          type: integer
+          minimum: 0
+        high:
+          type: integer
+          minimum: 0
+        medium:
+          type: integer
+          minimum: 0
+        low:
+          type: integer
+          minimum: 0
+
+    OpenConversationsAttention:
+      type: object
+      required:
+        - open_conversations
+      properties:
+        open_conversations:
+          type: integer
+          minimum: 0
+
+    SellerDashboardSummary:
+      type: object
+      required:
+        - total_order_items
+        - active_order_items
+        - order_items_by_status
+      properties:
+        total_order_items:
+          type: integer
+          minimum: 0
+        active_order_items:
+          type: integer
+          minimum: 0
+        order_items_by_status:
+          $ref: "#/components/schemas/OrderItemsByStatus"
+
+    SellerRecentOrderItem:
+      type: object
+      required:
+        - order_item_id
+        - order_id
+        - product
+        - buyer
+        - quantity
+        - purchase_price
+        - status
+        - created_at
+      properties:
+        order_item_id:
+          type: string
+          format: uuid
+        order_id:
+          type: string
+          format: uuid
+        product:
+          $ref: "#/components/schemas/ProductSummary"
+        buyer:
+          $ref: "#/components/schemas/BuyerSummary"
+        quantity:
+          type: integer
+          minimum: 1
+        purchase_price:
+          $ref: "#/components/schemas/Price"
+        status:
+          $ref: "#/components/schemas/OrderItemStatus"
+        created_at:
+          type: string
+          format: date-time
+
+    SellerRecent:
+      type: object
+      required:
+        - order_items
+      properties:
+        order_items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SellerRecentOrderItem"
+
+    SellerDashboard:
+      type: object
+      required:
+        - role
+        - summary
+        - attention
+        - recent
+      properties:
+        role:
+          type: string
+          enum:
+            - seller
+        summary:
+          $ref: "#/components/schemas/SellerDashboardSummary"
+        attention:
+          $ref: "#/components/schemas/OpenConversationsAttention"
+        recent:
+          $ref: "#/components/schemas/SellerRecent"
+
+    BuyerDashboardSummary:
+      type: object
+      required:
+        - active_orders
+        - completed_orders
+      properties:
+        active_orders:
+          type: integer
+          minimum: 0
+        completed_orders:
+          type: integer
+          minimum: 0
+
+    BuyerOrderProjectionStatus:
+      type: string
+      enum:
+        - in_progress
+        - completed
+        - cancelled
+
+    BuyerRecentOrderItem:
+      type: object
+      required:
+        - order_item_id
+        - product
+        - quantity
+        - status
+      properties:
+        order_item_id:
+          type: string
+          format: uuid
+        product:
+          $ref: "#/components/schemas/ProductSummary"
+        quantity:
+          type: integer
+          minimum: 1
+        status:
+          $ref: "#/components/schemas/OrderItemStatus"
+
+    BuyerRecentOrder:
+      type: object
+      required:
+        - order_id
+        - created_at
+        - status
+        - total_amount
+        - items
+      properties:
+        order_id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+        status:
+          $ref: "#/components/schemas/BuyerOrderProjectionStatus"
+        total_amount:
+          $ref: "#/components/schemas/Price"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/BuyerRecentOrderItem"
+
+    BuyerRecent:
+      type: object
+      required:
+        - orders
+      properties:
+        orders:
+          type: array
+          items:
+            $ref: "#/components/schemas/BuyerRecentOrder"
+
+    BuyerDashboard:
+      type: object
+      required:
+        - role
+        - summary
+        - attention
+        - recent
+      properties:
+        role:
+          type: string
+          enum:
+            - buyer
+        summary:
+          $ref: "#/components/schemas/BuyerDashboardSummary"
+        attention:
+          $ref: "#/components/schemas/OpenConversationsAttention"
+        recent:
+          $ref: "#/components/schemas/BuyerRecent"
+
+    OpsDashboardSummary:
+      type: object
+      required:
+        - open_conversations
+        - conversations_by_priority
+      properties:
+        open_conversations:
+          type: integer
+          minimum: 0
+        conversations_by_priority:
+          $ref: "#/components/schemas/ConversationsByPriority"
+
+    OpsQueuePreviewItem:
+      type: object
+      required:
+        - conversation_id
+        - order_item_id
+        - effective_priority
+        - calculated_priority
+        - ops_override
+        - reason
+        - last_interaction_at
+        - seller
+        - buyer
+        - product
+        - order_item_status
+        - purchase_price
+      properties:
+        conversation_id:
+          type: string
+          format: uuid
+        order_item_id:
+          type: string
+          format: uuid
+        effective_priority:
+          $ref: "#/components/schemas/EffectivePriority"
+        calculated_priority:
+          $ref: "#/components/schemas/CalculatedPriority"
+        ops_override:
+          $ref: "#/components/schemas/OpsOverride"
+        reason:
+          $ref: "#/components/schemas/ConversationReason"
+        last_interaction_at:
+          type: string
+          format: date-time
+        seller:
+          $ref: "#/components/schemas/SellerSummary"
+        buyer:
+          $ref: "#/components/schemas/BuyerSummary"
+        product:
+          $ref: "#/components/schemas/ProductSummary"
+        order_item_status:
+          $ref: "#/components/schemas/OrderItemStatus"
+        purchase_price:
+          $ref: "#/components/schemas/Price"
+
+    OpsAttention:
+      type: object
+      required:
+        - priority_queue_preview
+      properties:
+        priority_queue_preview:
+          type: array
+          items:
+            $ref: "#/components/schemas/OpsQueuePreviewItem"
+
+    OpsRecent:
+      type: object
+      additionalProperties: false
+
+    OpsDashboard:
+      type: object
+      required:
+        - role
+        - summary
+        - attention
+        - recent
+      properties:
+        role:
+          type: string
+          enum:
+            - ops
+        summary:
+          $ref: "#/components/schemas/OpsDashboardSummary"
+        attention:
+          $ref: "#/components/schemas/OpsAttention"
+        recent:
+          $ref: "#/components/schemas/OpsRecent"

@@ -9,4 +9,4 @@ def test_health_returns_ok(client: TestClient) -> None:
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
     assert response.json()["version"] == __version__
-    assert response.json()["version"] == "0.8.0"
+    assert response.json()["version"] == "0.9.0"
