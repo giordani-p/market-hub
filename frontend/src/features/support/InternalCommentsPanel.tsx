@@ -1,3 +1,4 @@
+import { LifeBuoy } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '../../components/ui/Button'
 import { EmptyState } from '../../components/feedback/EmptyState'
@@ -51,7 +52,10 @@ export function InternalCommentsPanel({ itemId, viewerRole = 'seller' }: Interna
 
   return (
     <div className="support-log">
-      <h2>Suporte interno</h2>
+      <h2>
+        <LifeBuoy size={18} aria-hidden="true" />
+        Suporte interno
+      </h2>
       <p className="text-muted">{PANEL_DESCRIPTION[viewerRole]}</p>
 
       {state.status === 'loading' && <Spinner label="Carregando comentários..." />}

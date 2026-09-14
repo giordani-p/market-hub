@@ -89,7 +89,7 @@ export function StatusActions({ itemId, status, onChanged }: StatusActionsProps)
         {canCancel(status) && !confirmingCancel && (
           <Button
             type="button"
-            variant="secondary"
+            variant="destructive"
             onClick={() => setConfirmingCancel(true)}
             disabled={pending}
           >
@@ -100,7 +100,7 @@ export function StatusActions({ itemId, status, onChanged }: StatusActionsProps)
         {confirmingCancel && (
           <div className="confirm-inline">
             <span>Cancelar este item?</span>
-            <Button type="button" onClick={handleCancel} disabled={pending}>
+            <Button type="button" variant="destructive" onClick={handleCancel} disabled={pending}>
               {pending ? 'Cancelando...' : 'Confirmar cancelamento'}
             </Button>
             <Button
