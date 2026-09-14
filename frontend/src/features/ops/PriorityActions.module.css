@@ -1,0 +1,25 @@
+.priorityActions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.current {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--font-size-body-sm);
+  color: var(--color-muted);
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.justification {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}

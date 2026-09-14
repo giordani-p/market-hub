@@ -10,3 +10,10 @@ export function roleHomePath(role: UserRole): string {
       return '/ops'
   }
 }
+
+/** Rotulo do papel exibido na interface. */
+export const ROLE_LABELS: Record<UserRole, string> = {
+  buyer: 'Comprador',
+  seller: 'Vendedor',
+  ops: 'Operações',
+}

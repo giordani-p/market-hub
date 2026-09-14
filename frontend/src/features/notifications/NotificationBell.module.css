@@ -1,0 +1,116 @@
+.notificationBell {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.trigger {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-md);
+  color: inherit;
+  cursor: pointer;
+}
+
+.trigger:hover {
+  background: var(--color-surface-subtle);
+}
+
+.badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  min-width: 1.1rem;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-pill);
+  background: var(--color-danger-solid);
+  color: var(--color-primary-fg);
+  font-size: 0.65rem;
+  font-weight: var(--font-weight-bold);
+  line-height: 1.1rem;
+  text-align: center;
+}
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  z-index: 30;
+  width: 22rem;
+  max-width: calc(100vw - var(--space-8));
+  max-height: 26rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-dropdown);
+}
+
+.dropdownHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.item:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-softer);
+}
+
+.itemUnread {
+  border-left: 3px solid var(--color-primary);
+}
+
+.itemTitle {
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-body-sm);
+}
+
+.itemUnread .itemTitle {
+  font-weight: var(--font-weight-bold);
+}
+
+.itemMessage {
+  color: var(--color-muted);
+  font-size: var(--font-size-body-sm);
+}
+
+.itemTime {
+  color: var(--color-muted);
+  font-size: var(--font-size-caption);
+}

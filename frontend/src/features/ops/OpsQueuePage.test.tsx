@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -48,7 +48,7 @@ describe('OpsQueuePage', () => {
 
   it('renders the conversations returned by the API', async () => {
     fetchOpsConversationQueue.mockResolvedValue(response())
-    const { container } = render(
+    render(
       <MemoryRouter>
         <OpsQueuePage />
       </MemoryRouter>,
@@ -56,7 +56,8 @@ describe('OpsQueuePage', () => {
 
     expect(await screen.findByText('Tenis Runner')).toBeInTheDocument()
     expect(screen.getByText('Loja A')).toBeInTheDocument()
-    expect(container.querySelector('.priority-high')).toHaveTextContent('Alta')
+    // 'Alta' tambem e uma opcao do filtro -- a asserção precisa olhar a linha.
+    expect(within(screen.getByRole('table')).getByText('Alta')).toBeInTheDocument()
   })
 
   it('refetches with the priority filter when it changes', async () => {

@@ -1,5 +1,17 @@
 import type { ReactNode } from 'react'
+import styles from './Card.module.css'
 
-export function Card({ children }: { children: ReactNode }) {
-  return <div className="card">{children}</div>
+interface CardProps {
+  children: ReactNode
+  /** Realce de hover, para card que e alvo de link. */
+  interactive?: boolean
+  className?: string
+}
+
+export function Card({ children, interactive = false, className = '' }: CardProps) {
+  return (
+    <div className={`${styles.card} ${interactive ? styles.interactive : ''} ${className}`.trim()}>
+      {children}
+    </div>
+  )
 }

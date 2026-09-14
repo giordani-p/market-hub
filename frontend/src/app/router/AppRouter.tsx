@@ -78,10 +78,7 @@ export function AppRouter() {
           <Route path="/catalog" element={<ProductListPage />} />
           <Route path="/catalog/:productId" element={<ProductDetailPage />} />
           <Route path="/buyer/catalog" element={<Navigate to="/catalog" replace />} />
-          <Route
-            path="/buyer/catalog/:productId"
-            element={<BuyerCatalogRedirect />}
-          />
+          <Route path="/buyer/catalog/:productId" element={<BuyerCatalogRedirect />} />
           <Route path="/buyer/orders" element={<OrdersListPage />} />
           <Route path="/buyer/orders/:orderId" element={<OrderDetailPage />} />
           <Route

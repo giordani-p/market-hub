@@ -1,0 +1,57 @@
+/*
+ * Placeholder com a forma do conteudo que esta chegando. Substitui o
+ * spinner de pagina inteira: o usuario ve onde a informacao vai aparecer
+ * e o layout nao pula quando ela chega.
+ */
+.skeleton {
+  display: block;
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-subtle) 25%,
+    color-mix(in srgb, var(--color-muted) 12%, var(--color-surface-subtle)) 37%,
+    var(--color-surface-subtle) 63%
+  );
+  background-size: 400% 100%;
+  border-radius: var(--radius-sm);
+  animation: skeleton-shimmer 1.4s ease infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
+
+.text {
+  height: 1rem;
+  margin-block: var(--space-1);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.card {
+  height: 88px;
+  border-radius: var(--radius-lg);
+}
+
+.row {
+  height: 52px;
+}
+
+.stat {
+  height: 76px;
+  border-radius: var(--radius-lg);
+}

@@ -1,5 +1,8 @@
 import { useState } from 'react'
 import { Button } from '../../components/ui/Button'
+import { ConfirmDialog } from '../../components/overlay/ConfirmDialog'
+import { FormError } from '../../components/feedback/FormError'
+import { useToast } from '../../components/overlay/toast-context'
 import { errorMessage } from '../../lib/utils/errorMessage'
 import type { OrderItemStatus } from '../../types/order'
 import { cancelOrderItem } from './api'
@@ -12,6 +15,7 @@ interface BuyerCancelActionsProps {
 }
 
 export function BuyerCancelActions({ itemId, status, onChanged }: BuyerCancelActionsProps) {
+  const { showToast } = useToast()
   const [pending, setPending] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -26,6 +30,7 @@ export function BuyerCancelActions({ itemId, status, onChanged }: BuyerCancelAct
     try {
       await cancelOrderItem(itemId)
       setConfirming(false)
+      showToast({ message: 'Item cancelado.' })
       onChanged()
     } catch (err) {
       setError(errorMessage(err))
@@ -35,40 +40,27 @@ export function BuyerCancelActions({ itemId, status, onChanged }: BuyerCancelAct
   }
 
   return (
-    <div className="status-actions">
-      {error && (
-        <p className="field-error" role="alert">
-          {error}
-        </p>
-      )}
-      <div className="status-buttons">
-        {!confirming && (
-          <Button
-            type="button"
-            variant="destructive"
-            onClick={() => setConfirming(true)}
-            disabled={pending}
-          >
-            Cancelar item
-          </Button>
-        )}
-        {confirming && (
-          <div className="confirm-inline">
-            <span>Cancelar este item?</span>
-            <Button type="button" variant="destructive" onClick={handleCancel} disabled={pending}>
-              {pending ? 'Cancelando...' : 'Confirmar cancelamento'}
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setConfirming(false)}
-              disabled={pending}
-            >
-              Voltar
-            </Button>
-          </div>
-        )}
-      </div>
-    </div>
+    <>
+      <FormError message={error} />
+      <Button
+        type="button"
+        variant="destructive"
+        onClick={() => setConfirming(true)}
+        disabled={pending}
+      >
+        Cancelar item
+      </Button>
+
+      <ConfirmDialog
+        open={confirming}
+        title="Cancelar este item?"
+        description="O cancelamento não pode ser desfeito."
+        confirmLabel="Confirmar cancelamento"
+        destructive
+        pending={pending}
+        onConfirm={handleCancel}
+        onCancel={() => setConfirming(false)}
+      />
+    </>
   )
 }

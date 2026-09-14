@@ -1,5 +1,6 @@
 import { ErrorState } from '../../components/feedback/ErrorState'
-import { Spinner } from '../../components/feedback/Spinner'
+import { SkeletonList } from '../../components/ui/Skeleton'
+import { Page } from '../../components/layout/Page'
 import { useAsync } from '../../lib/utils/useAsync'
 import { fetchDashboard } from './api'
 import { BuyerDashboardView } from './BuyerDashboardView'
@@ -10,10 +11,18 @@ export function DashboardPage() {
   const state = useAsync(fetchDashboard, [])
 
   if (state.status === 'loading') {
-    return <Spinner label="Carregando início..." />
+    return (
+      <Page>
+        <SkeletonList count={3} variant="stat" label="Carregando início..." />
+      </Page>
+    )
   }
   if (state.status === 'error') {
-    return <ErrorState message={state.error} onRetry={state.retry} />
+    return (
+      <Page>
+        <ErrorState message={state.error} onRetry={state.retry} />
+      </Page>
+    )
   }
 
   const data = state.data

@@ -1,0 +1,16 @@
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+/* Card que e alvo de link precisa parecer clicavel -- sem isso o hover
+   nao da nenhum feedback. */
+.interactive:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-softer);
+}

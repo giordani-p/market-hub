@@ -1,0 +1,11 @@
+/*
+ * Conversa com o comprador e suporte interno lado a lado no desktop. Em
+ * telefone os dois viram abas: empilhados, o segundo painel ficava longe
+ * demais para ser encontrado.
+ */
+.columns {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: var(--space-6);
+  align-items: start;
+}

@@ -1,3 +1,7 @@
+import { AlertCircle } from 'lucide-react'
+import { Button } from '../ui/Button'
+import styles from './ErrorState.module.css'
+
 interface ErrorStateProps {
   message: string
   onRetry?: () => void
@@ -5,12 +9,13 @@ interface ErrorStateProps {
 
 export function ErrorState({ message, onRetry }: ErrorStateProps) {
   return (
-    <div className="error-state" role="alert">
-      <p>{message}</p>
+    <div className={styles.errorState} role="alert">
+      <AlertCircle size={20} className={styles.icon} aria-hidden="true" />
+      <p className={styles.message}>{message}</p>
       {onRetry && (
-        <button type="button" className="btn btn-secondary" onClick={onRetry}>
+        <Button type="button" variant="secondary" size="sm" onClick={onRetry}>
           Tentar novamente
-        </button>
+        </Button>
       )}
     </div>
   )

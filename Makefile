@@ -1,4 +1,4 @@
-.PHONY: install lint format test run db-up db-down migrate revision seed close-inactive jobs-up enqueue-reconcile worker
+.PHONY: install lint format test run db-up db-down migrate revision seed reset close-inactive jobs-up enqueue-reconcile worker
 
 install:
 	uv sync --extra dev
@@ -23,6 +23,12 @@ db-up:
 
 seed:
 	uv run python -m app.catalog.seed
+
+reset:
+	docker compose down -v
+	$(MAKE) db-up
+	$(MAKE) migrate
+	$(MAKE) seed
 
 db-down:
 	docker compose down

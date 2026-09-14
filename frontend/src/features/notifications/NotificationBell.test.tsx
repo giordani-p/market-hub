@@ -172,9 +172,7 @@ describe('NotificationBell', () => {
     await user.click(screen.getByText('Status do pedido atualizado'))
 
     expect(fetchOrderItemRouteContext).toHaveBeenCalledWith('item-1')
-    await waitFor(() =>
-      expect(navigate).toHaveBeenCalledWith('/buyer/orders/order-1/items/item-1'),
-    )
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/buyer/orders/order-1/items/item-1'))
   })
 
   it('closes the dropdown when Escape is pressed', async () => {

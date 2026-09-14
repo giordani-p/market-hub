@@ -1,0 +1,81 @@
+/*
+ * Barra de filtros das telas de lista.
+ *
+ * Abaixo de md os campos colapsam atras de um botao "Filtros": em tela
+ * pequena, cinco campos empilhados empurram o conteudo para fora da
+ * primeira dobra.
+ */
+.filterBar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.toggle {
+  display: none;
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-3);
+  align-items: start;
+}
+
+/* Controle sem rotulo proprio (checkbox) precisa descer a altura de um
+   label para ficar na mesma linha dos inputs vizinhos. */
+.alignWithControl {
+  padding-top: calc(var(--font-size-body-sm) * var(--line-height-base) + var(--space-1));
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.chipsLabel {
+  color: var(--color-muted);
+  font-size: var(--font-size-caption);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-pill);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.chip:hover {
+  background: color-mix(in srgb, var(--color-primary) 16%, var(--color-surface));
+}
+
+@media (max-width: 767px) {
+  .toggle {
+    display: inline-flex;
+    align-self: flex-start;
+  }
+
+  .fields {
+    grid-template-columns: 1fr;
+  }
+
+  .fieldsCollapsed {
+    display: none;
+  }
+}

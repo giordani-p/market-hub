@@ -1,8 +1,11 @@
 import { useParams } from 'react-router-dom'
 import { Card } from '../../components/ui/Card'
 import { StatusBadge } from '../../components/ui/StatusBadge'
+import { DetailList } from '../../components/data/DetailList'
 import { ErrorState } from '../../components/feedback/ErrorState'
 import { Spinner } from '../../components/feedback/Spinner'
+import { Page } from '../../components/layout/Page'
+import { PageHeader } from '../../components/layout/PageHeader'
 import { ConversationPanel } from '../conversations/ConversationPanel'
 import { formatCurrencyBRL, formatDate } from '../../lib/utils/format'
 import { useAsync } from '../../lib/utils/useAsync'
@@ -28,30 +31,34 @@ export function BuyerOrderItemDetailPage() {
   }
 
   return (
-    <div className="page page-wide">
-      <div className="item-detail-header">
-        <h1>{item.product.name}</h1>
-        <StatusBadge status={item.status} />
-      </div>
+    <Page>
+      <PageHeader
+        title={item.product.name}
+        meta={<StatusBadge status={item.status} />}
+        breadcrumbs={[
+          { label: 'Meus pedidos', to: '/buyer/orders' },
+          { label: `#${order.id.slice(0, 8)}`, to: `/buyer/orders/${order.id}` },
+          { label: item.product.name },
+        ]}
+        actions={
+          <BuyerCancelActions itemId={item.id} status={item.status} onChanged={state.retry} />
+        }
+      />
 
       <Card>
-        <dl className="detail-list">
-          <dt>Quantidade</dt>
-          <dd>{item.quantity}</dd>
-
-          <dt>Preço</dt>
-          <dd>{formatCurrencyBRL(item.purchase_price)}</dd>
-
-          <dt>Pedido</dt>
-          <dd>
-            #{order.id.slice(0, 8)} — {formatDate(order.created_at)}
-          </dd>
-        </dl>
+        <DetailList
+          entries={[
+            { term: 'Quantidade', value: item.quantity },
+            { term: 'Preço', value: formatCurrencyBRL(item.purchase_price) },
+            {
+              term: 'Pedido',
+              value: `#${order.id.slice(0, 8)} — ${formatDate(order.created_at)}`,
+            },
+          ]}
+        />
       </Card>
 
-      <BuyerCancelActions itemId={item.id} status={item.status} onChanged={state.retry} />
-
       <ConversationPanel itemId={item.id} viewerRole="buyer" />
-    </div>
+    </Page>
   )
 }
