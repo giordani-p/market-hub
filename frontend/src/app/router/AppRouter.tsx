@@ -7,12 +7,13 @@ import { LoginPage } from '../../features/auth/LoginPage'
 import { BuyerOrderItemDetailPage } from '../../features/orders/BuyerOrderItemDetailPage'
 import { OrderDetailPage } from '../../features/orders/OrderDetailPage'
 import { OrdersListPage } from '../../features/orders/OrdersListPage'
+import { OpsConversationDetailPage } from '../../features/ops/OpsConversationDetailPage'
+import { OpsQueuePage } from '../../features/ops/OpsQueuePage'
 import { SellerOrderItemDetailPage } from '../../features/seller-orders/SellerOrderItemDetailPage'
 import { SellerOrdersListPage } from '../../features/seller-orders/SellerOrdersListPage'
 import { roleHomePath } from '../../lib/auth/role'
 import { AppLayout } from '../layout/AppLayout'
 import { NotFoundPage } from '../layout/NotFoundPage'
-import { RoleHomePage } from '../layout/RoleHomePage'
 import { useAuth } from '../providers/auth-context'
 
 function ProtectedArea({ children }: { children: ReactNode }) {
@@ -75,7 +76,11 @@ export function AppRouter() {
           />
           <Route path="/seller/orders" element={<SellerOrdersListPage />} />
           <Route path="/seller/orders/:itemId" element={<SellerOrderItemDetailPage />} />
-          <Route path="/ops" element={<RoleHomePage role="ops" />} />
+          <Route path="/ops" element={<OpsQueuePage />} />
+          <Route
+            path="/ops/conversations/:conversationId"
+            element={<OpsConversationDetailPage />}
+          />
         </Route>
         <Route path="*" element={<NotFoundPage />} />
       </Routes>

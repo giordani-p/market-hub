@@ -1954,6 +1954,7 @@ components:
         - created_at
         - updated_at
         - last_interaction_at
+        - effective_priority
       properties:
         id:
           type: string
@@ -1974,6 +1975,8 @@ components:
         last_interaction_at:
           type: string
           format: date-time
+        effective_priority:
+          $ref: "#/components/schemas/EffectivePriority"
 
     CreateMessageRequest:
       type: object

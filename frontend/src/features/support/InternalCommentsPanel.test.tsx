@@ -33,12 +33,13 @@ describe('InternalCommentsPanel', () => {
     expect(await screen.findByText('Nenhum comentário interno ainda.')).toBeInTheDocument()
   })
 
-  it('lists existing comments with their author', async () => {
+  it('lists existing comments with their author, defaulting to viewerRole seller', async () => {
     fetchInternalComments.mockResolvedValue([comment])
     render(<InternalCommentsPanel itemId="item-1" />)
 
     expect(await screen.findByText('Cliente pediu prioridade.')).toBeInTheDocument()
     expect(screen.getByText('Ops')).toBeInTheDocument()
+    expect(fetchInternalComments).toHaveBeenCalledWith('item-1', 'seller')
   })
 
   it('creates a new comment and refreshes the list', async () => {
@@ -54,7 +55,40 @@ describe('InternalCommentsPanel', () => {
     )
     await user.click(screen.getByRole('button', { name: 'Registrar' }))
 
-    expect(createInternalComment).toHaveBeenCalledWith('item-1', 'Cliente pediu prioridade.')
+    expect(createInternalComment).toHaveBeenCalledWith('item-1', 'Cliente pediu prioridade.', 'seller')
     expect(await screen.findByText('Cliente pediu prioridade.')).toBeInTheDocument()
+  })
+
+  it('labels the seller as the other author when viewed as ops', async () => {
+    fetchInternalComments.mockResolvedValue([{ ...comment, author_type: 'seller' }])
+    render(<InternalCommentsPanel itemId="item-1" viewerRole="ops" />)
+
+    expect(await screen.findByText('Cliente pediu prioridade.')).toBeInTheDocument()
+    expect(screen.getByText('Seller')).toBeInTheDocument()
+    expect(fetchInternalComments).toHaveBeenCalledWith('item-1', 'ops')
+  })
+
+  it('labels its own comment as "Você" when viewed as ops', async () => {
+    fetchInternalComments.mockResolvedValue([comment])
+    render(<InternalCommentsPanel itemId="item-1" viewerRole="ops" />)
+
+    expect(await screen.findByText('Cliente pediu prioridade.')).toBeInTheDocument()
+    expect(screen.getByText('Você')).toBeInTheDocument()
+  })
+
+  it('creates a comment through the ops route when viewerRole is ops', async () => {
+    fetchInternalComments.mockResolvedValueOnce([]).mockResolvedValueOnce([comment])
+    createInternalComment.mockResolvedValue(comment)
+    render(<InternalCommentsPanel itemId="item-1" viewerRole="ops" />)
+    await screen.findByText('Nenhum comentário interno ainda.')
+    const user = userEvent.setup()
+
+    await user.type(
+      screen.getByPlaceholderText('Registrar comentário interno...'),
+      'Retorno da Ops.',
+    )
+    await user.click(screen.getByRole('button', { name: 'Registrar' }))
+
+    expect(createInternalComment).toHaveBeenCalledWith('item-1', 'Retorno da Ops.', 'ops')
   })
 })

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Button } from '../../components/ui/Button'
+import { PriorityBadge } from '../../components/ui/PriorityBadge'
 import { EmptyState } from '../../components/feedback/EmptyState'
 import { ErrorState } from '../../components/feedback/ErrorState'
 import { Spinner } from '../../components/feedback/Spinner'
@@ -179,7 +180,10 @@ export function ConversationPanel({ itemId, viewerRole }: ConversationPanelProps
 
   return (
     <div className="conversation-panel">
-      <h2>{PANEL_TITLE[viewerRole]}</h2>
+      <div className="conversation-panel-header">
+        <h2>{PANEL_TITLE[viewerRole]}</h2>
+        {selected && <PriorityBadge priority={selected.effective_priority} />}
+      </div>
 
       {!selected && (
         <div className="conversation-empty">

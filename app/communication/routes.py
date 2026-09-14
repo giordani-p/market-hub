@@ -26,6 +26,7 @@ from app.communication.lifecycle import (
     validate_before,
 )
 from app.communication.models import Conversation, Message
+from app.communication.priority import effective_priority
 from app.communication.schemas import (
     ConversationResponse,
     CreateConversationRequest,
@@ -43,8 +44,29 @@ item_router = APIRouter(tags=["conversations"])
 conversation_router = APIRouter(tags=["conversations"])
 
 
+def _to_conversation_response(conversation: Conversation) -> ConversationResponse:
+    """Converte a Conversation persistida, com o `effective_priority` derivado.
+
+    Nao e uma coluna do modelo (so calculated_priority/ops_override sao), por
+    isso o Buyer/Seller precisa da mesma conversao explicita que a Ops ja usa
+    (`to_ops_conversation`), em vez de `model_validate` direto no ORM.
+    """
+    return ConversationResponse(
+        id=conversation.id,
+        order_item_id=conversation.order_item_id,
+        reason=conversation.reason,
+        status=conversation.status,
+        created_at=conversation.created_at,
+        updated_at=conversation.updated_at,
+        last_interaction_at=conversation.last_interaction_at,
+        effective_priority=effective_priority(
+            conversation.calculated_priority, conversation.ops_override
+        ),
+    )
+
+
 def _conversation_payload(conversation: Conversation) -> dict:
-    return ConversationResponse.model_validate(conversation).model_dump(mode="json")
+    return _to_conversation_response(conversation).model_dump(mode="json")
 
 
 def _parse_before(before: datetime | None) -> datetime | None:
@@ -89,7 +111,7 @@ def list_conversations(
     session: SessionDep,
     user: CurrentUser,
     settings: SettingsDep,
-) -> list[Conversation]:
+) -> list[ConversationResponse]:
     load_participant_item(session, item_id, user)
     conversations = list(
         session.scalars(
@@ -105,13 +127,14 @@ def list_conversations(
             )
             if locked is not None:
                 maybe_close_inactive(session, locked, settings)
-    return list(
-        session.scalars(
+    return [
+        _to_conversation_response(conversation)
+        for conversation in session.scalars(
             select(Conversation)
             .where(Conversation.order_item_id == item_id)
             .order_by(Conversation.last_interaction_at.desc())
         )
-    )
+    ]
 
 
 @conversation_router.get(
@@ -124,10 +147,10 @@ def get_conversation(
     session: SessionDep,
     user: CurrentUser,
     settings: SettingsDep,
-) -> Conversation:
+) -> ConversationResponse:
     conversation = load_participant_conversation(session, conversation_id, user, for_update=True)
     maybe_close_inactive(session, conversation, settings)
-    return conversation
+    return _to_conversation_response(conversation)
 
 
 @conversation_router.post(
@@ -140,12 +163,12 @@ def close_conversation(
     session: SessionDep,
     seller: SellerUser,
     settings: SettingsDep,
-) -> Conversation:
+) -> ConversationResponse:
     assert seller.seller_id is not None
     conversation = load_seller_conversation(
         session, conversation_id, seller.seller_id, for_update=True
     )
-    return close_by_seller(session, conversation, settings)
+    return _to_conversation_response(close_by_seller(session, conversation, settings))
 
 
 @conversation_router.post(
