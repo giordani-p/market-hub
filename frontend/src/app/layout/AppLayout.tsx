@@ -1,6 +1,7 @@
 import { Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Logo } from '../../components/ui/Logo'
 import { Tooltip } from '../../components/ui/Tooltip'
 import { NotificationBell } from '../../features/notifications/NotificationBell'
 import { roleHomePath } from '../../lib/auth/role'
@@ -68,7 +69,7 @@ export function AppLayout() {
         )}
 
         <Link to={roleHomePath(user.role)} className={styles.brand}>
-          Market Hub
+          <Logo />
         </Link>
 
         <GlobalSearch role={user.role} />

@@ -48,6 +48,25 @@
   border-color: var(--color-danger);
 }
 
+/* Controle com acao a direita (mostrar senha, limpar): o botao flutua
+   dentro da caixa e o input abre espaco para ele. */
+.controlWrap {
+  position: relative;
+  display: flex;
+}
+
+.controlWrap .control {
+  padding-right: var(--space-12);
+}
+
+.trailing {
+  position: absolute;
+  right: var(--space-1);
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+}
+
 .textarea {
   min-height: auto;
   resize: vertical;
