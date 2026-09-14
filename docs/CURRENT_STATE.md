@@ -1,8 +1,8 @@
 # Estado atual do projeto
 
-- **Versao**: 0.9.0
-- **Fase**: P7 Dashboard — COMPLETE
-- **Commit de referencia**: 70a8fc5
+- **Versao**: 0.10.0
+- **Fase**: P6.3 Email channel — COMPLETE
+- **Commit de referencia**: 3d0ab7a
 - **Repositório**: https://github.com/giordani-p/market-hub
 
 ## Do que se trata
@@ -22,10 +22,11 @@ em `docs/P5.3_Resultado.md`. A fase P6.1, especificada em
 `docs/P6.1_Foundation_Worker.md`, adiciona a fundacao de Jobs (SQS + Worker) e o
 recalculo periodico de prioridade. A fase P6.2, especificada em
 `docs/P6.2_Notification.md`, adiciona Notifications in-app via o Job
-`NOTIFY_STATUS_CHANGE`. A fase P7, especificada em `docs/P7_Dashboard.md`,
-adiciona `GET /v1/dashboard` como capability de leitura por papel, sem
-persistencia propria. O plano da fase nao deve ser copiado para ca: este
-documento descreve o que **existe hoje**.
+`NOTIFY_STATUS_CHANGE`. A fase P6.3 adiciona o canal de e-mail simulado no
+console do Worker quando `effective_priority` vira `high` ou `critical`. A fase
+P7, especificada em `docs/P7_Dashboard.md`, adiciona `GET /v1/dashboard` como
+capability de leitura por papel, sem persistencia propria. O plano da fase nao
+deve ser copiado para ca: este documento descreve o que **existe hoje**.
 
 ## Arquitetura
 
@@ -51,7 +52,8 @@ Um Worker em processo separado consome um Job por vez. Falhas nao deletam a
 mensagem; apos `maxReceiveCount` (3) ela vai para `market-hub-jobs-dlq`. O
 EventBridge Scheduler do LocalStack e mock e nao dispara fila; no AWS real o
 mapeamento continua Scheduler → SQS. Recalculo por evento de dominio nao existe:
-a fila Ops pode ficar ate cerca de 15 minutos defasada.
+a fila Ops pode ficar ate cerca de 15 minutos defasada. E-mail de alerta
+(`high`/`critical`) e logado no stdout desse Worker, nao na API.
 
 ## Mapa do codigo
 
@@ -69,7 +71,7 @@ a fila Ops pode ficar ate cerca de 15 minutos defasada.
 | `app/communication/` | Conversation, Messages, lazy close, batch de inatividade, PriorityPolicy e reconcilacao |
 | `app/support/`       | listagem/detalhe Ops, InternalComment, fila e override critical                         |
 | `app/jobs/`          | Job, registry, adapter SQS, Worker e enqueue                                            |
-| `app/notifications/` | Notification in-app, canal, service, Job `NOTIFY_STATUS_CHANGE` e rotas                 |
+| `app/notifications/` | Notification in-app, canal, e-mail console, Job `NOTIFY_STATUS_CHANGE` e rotas          |
 | `app/dashboard/`     | Capability de leitura `GET /v1/dashboard` (projecao Seller/Buyer/Ops)                   |
 | `api/openapi.yaml`   | contrato da API escrito a mao                                                           |
 | `infra/local/`       | provisionamento LocalStack (filas, DLQ, EventBridge Rule)                               |
@@ -324,8 +326,15 @@ so poll); qualquer coisa alem do que este documento ja descreve. Ver
   `effective_priority` (`ConversationPriorityChanged`, inclusive reconcile e
   critical) avisa Seller + Ops. `ConversationCreated` e `MessageCreated` nao
   notificam. `title`/`message` em ingles. Idempotencia por unique
-  `(recipient, type, entity, previous, new, changed_at)`. Canal so `IN_APP`.
+  `(recipient, type, entity, previous, new, changed_at)`. Canal in-app `IN_APP`.
   A API nao espera a Notification; `make test` usa fila in-memory.
+- E-mail (P6.3): mesmo Job, depois do in-app, so quando
+  `CONVERSATION_PRIORITY_CHANGED` e `new_status` e `high` ou `critical`.
+  Destinatarios: `User.email` do Seller + `NOTIFICATION_EMAIL_EXTRA_TO` se
+  preenchida. Sem SMTP: `ConsoleEmailSender` loga no Worker. Conversation que
+  ja nasce `high` nao e-maila (so mudanca de `effective_priority`). Retry do
+  Job pode repetir o log. Slack/SMS ainda nao existem; o gancho e
+  `should_email` em `app/notifications/delivery.py`.
 
 ## Configuracao
 
@@ -335,7 +344,7 @@ referencia: `ENVIRONMENT`, `API_PREFIX`, `CORS_ORIGINS`, `DATABASE_URL`, `TEST_D
 `CONVERSATION_INACTIVITY_HOURS`, `AWS_ENDPOINT_URL`, `AWS_REGION`,
 `JOBS_QUEUE_NAME`, `JOBS_DLQ_NAME`, `JOBS_VISIBILITY_TIMEOUT_SECONDS`,
 `JOBS_MAX_RECEIVE_COUNT`, `JOBS_WAIT_TIME_SECONDS`, `RECONCILE_PAGE_SIZE`,
-`JOBS_SCHEDULE_EXPRESSION`. `AWS_ENDPOINT_URL` local padrao e
+`JOBS_SCHEDULE_EXPRESSION`, `NOTIFICATION_EMAIL_EXTRA_TO`. `AWS_ENDPOINT_URL` local padrao e
 `http://localhost:4566`; o cliente SQS usa keys dummy nesse endpoint para nao
 herdar `~/.aws`. `CORS_ORIGINS` e uma lista separada por virgula (padrao
 `http://localhost:5173,http://localhost:3000`) e habilita `CORSMiddleware`
@@ -371,7 +380,8 @@ Postgres no ar e nao sobe LocalStack.
 - Inbox global de frontend, KPIs/analytics, WebSocket/SSE.
 - Event bus, Outbox, Kafka, Redis ou observabilidade alem dos logs do Worker.
 - Soft delete ou diferenciacao entre excluir e deixar de disponibilizar.
-- Canais Email/Slack/WhatsApp e notificacoes de `MessageCreated`.
+- Slack/WhatsApp/SMS reais e SMTP de e-mail (hoje so console no Worker).
+- Notificacoes de `MessageCreated`.
 
 ## Proxima etapa
 
@@ -380,6 +390,10 @@ frontend F0-F7 esta completo.
 
 ## Historico de versoes
 
+- **0.10.0** — P6.3: canal de e-mail simulado no console do Worker quando
+  `effective_priority` vira `high` ou `critical`. Destinatarios: e-mail do
+  Seller + `NOTIFICATION_EMAIL_EXTRA_TO`. Sem SMTP, sem novo Job, sem UI.
+  Conversation que ja nasce `high` nao dispara e-mail.
 - **0.9.0** — P7 Dashboard: `GET /v1/dashboard` projeta Summary/Attention/Recent
   por papel (Seller em Order Items, Buyer em Orders, Ops na fila de prioridade),
   sem tabela nem agregado proprio. Contrato discriminado por `role` em

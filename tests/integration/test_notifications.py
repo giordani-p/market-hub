@@ -1,9 +1,10 @@
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.auth.seed import BUYER_ID, OPS_ID, SELLER_A_USER_ID
+from app.auth.seed import BUYER_ID, OPS_ID, SELLER_A_EMAIL, SELLER_A_USER_ID
 from app.jobs.handlers import default_registry
 from app.jobs.worker import process_once
 from app.notifications.models import (
@@ -19,7 +20,13 @@ from tests.integration.auth_helpers import (
     seller_a_headers,
     seller_b_headers,
 )
-from tests.integration.test_priority import _checkout, _offer, _open, _product
+from tests.integration.test_priority import (
+    _advance_item_to_in_transit,
+    _checkout,
+    _offer,
+    _open,
+    _product,
+)
 
 
 def _drain(queue: InMemoryJobQueue) -> None:
@@ -30,6 +37,31 @@ def _drain(queue: InMemoryJobQueue) -> None:
 
 def _factory(engine: Engine) -> sessionmaker[Session]:
     return sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+
+
+class _RecordingEmailSender:
+    """Captura o send no caminho do Worker; caplog nao ve logger app.* no TestClient."""
+
+    def __init__(self) -> None:
+        self.sent: list[dict[str, object]] = []
+
+    def send(
+        self,
+        *,
+        to: list[str],
+        subject: str,
+        body: str,
+        entity_id: object,
+        new_status: str,
+    ) -> None:
+        del subject, body, entity_id
+        self.sent.append({"to": list(to), "new_status": new_status})
+
+
+def _install_email_recorder(monkeypatch: pytest.MonkeyPatch) -> _RecordingEmailSender:
+    recorder = _RecordingEmailSender()
+    monkeypatch.setattr("app.notifications.service.ConsoleEmailSender", lambda: recorder)
+    return recorder
 
 
 def test_empty_inbox_and_unread_count(catalog_client: TestClient) -> None:
@@ -123,8 +155,11 @@ def test_conversation_close_notifies_buyer_and_seller(
 
 
 def test_priority_notifies_seller_and_ops_not_buyer(
-    catalog_client: TestClient, job_queue: InMemoryJobQueue
+    catalog_client: TestClient,
+    job_queue: InMemoryJobQueue,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    recorder = _install_email_recorder(monkeypatch)
     product = _product(catalog_client)
     offer = _offer(catalog_client, product["id"], seller_a_headers(catalog_client), "299.00")
     item = _checkout(catalog_client, offer["id"], "299.00")
@@ -148,6 +183,44 @@ def test_priority_notifies_seller_and_ops_not_buyer(
     assert seller["items"][0]["type"] == CONVERSATION_PRIORITY_CHANGED
     assert seller["items"][0]["metadata"]["new_status"] == "critical"
     assert ops["items"][0]["recipient_id"] == str(OPS_ID)
+    assert recorder.sent
+    assert SELLER_A_EMAIL in recorder.sent[0]["to"]
+    assert recorder.sent[0]["new_status"] == "critical"
+
+
+def test_priority_high_emails_seller(
+    catalog_client: TestClient,
+    job_queue: InMemoryJobQueue,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    recorder = _install_email_recorder(monkeypatch)
+    product = _product(catalog_client)
+    offer = _offer(catalog_client, product["id"], seller_a_headers(catalog_client), "500.00")
+    item = _checkout(catalog_client, offer["id"], "500.00")
+    opened = _open(catalog_client, item["id"], "atraso", buyer_headers(catalog_client))
+    _advance_item_to_in_transit(catalog_client, item["id"], seller_a_headers(catalog_client))
+    job_queue.pending.clear()
+    refreshed = catalog_client.post(
+        f"/v1/ops/conversations/{opened['id']}/priority/refresh",
+        headers=ops_headers(catalog_client),
+    )
+    assert refreshed.status_code == 200, refreshed.text
+    assert refreshed.json()["effective_priority"] == "high"
+    _drain(job_queue)
+
+    seller = catalog_client.get(
+        "/v1/notifications", headers=seller_a_headers(catalog_client)
+    ).json()
+    ops = catalog_client.get("/v1/notifications", headers=ops_headers(catalog_client)).json()
+    buyer = catalog_client.get("/v1/notifications", headers=buyer_headers(catalog_client)).json()
+    assert seller["total"] == 1
+    assert ops["total"] == 1
+    assert buyer["total"] == 0
+    assert seller["items"][0]["type"] == CONVERSATION_PRIORITY_CHANGED
+    assert seller["items"][0]["metadata"]["new_status"] == "high"
+    assert recorder.sent
+    assert SELLER_A_EMAIL in recorder.sent[0]["to"]
+    assert recorder.sent[0]["new_status"] == "high"
 
 
 def test_idempotent_job_creates_one_notification_per_recipient(

@@ -15,7 +15,7 @@ class NotificationChannel(Protocol):
 
 
 class InAppNotificationChannel:
-    """Unico canal desta fase. Sem Email/Slack/WhatsApp."""
+    """Persiste a inbox. Email e um sender a parte, nao este Protocol."""
 
     def send(self, session: Session, notification: Notification) -> bool:
         try:

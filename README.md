@@ -88,6 +88,11 @@ make jobs-up           # sobe Postgres, LocalStack e o Worker
 make enqueue-reconcile # publica RECONCILE_PRIORITIES na hora, sem esperar 15 min
 ```
 
+O e-mail de alerta (prioridade `high`/`critical`) e simulado no log do
+Worker, nao na API (`docker compose logs -f worker`). Destinatario extra
+opcional: `NOTIFICATION_EMAIL_EXTRA_TO` no `.env`; reinicie o Worker depois
+de mudar.
+
 A Rule do EventBridge dispara a cada 15 minutos. Para conferir a DLQ, publique
 uma mensagem invalida na fila e receba-a ate `JOBS_MAX_RECEIVE_COUNT` (3).
 `make test` nao sobe LocalStack.
