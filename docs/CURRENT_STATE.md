@@ -1,8 +1,8 @@
 # Estado atual do projeto
 
 - **Versao**: 0.8.0
-- **Fase**: F.2 — COMPLETE (Frontend Seller Orders)
-- **Commit de referencia**: 79f3dce
+- **Fase**: Frontend F.3 — COMPLETE (Order Item + Communication)
+- **Commit de referencia**: 06cd1fd
 - **Repositório**: https://github.com/giordani-p/market-hub
 
 ## Do que se trata
@@ -104,7 +104,7 @@ Rotas implementadas, todas sob o prefixo `/v1`:
 | `GET /v1/order-items/{item_id}/internal-comments`               | array cronologico do Seller no proprio item                        |
 | `POST /v1/order-items/{item_id}/conversation`                   | `201` nova ou `200` OPEN reutilizada                               |
 | `GET /v1/order-items/{item_id}/conversations`                   | array por `last_interaction_at DESC`                               |
-| `GET /v1/conversations/{conversation_id}`                       | Conversation do participante                                       |
+| `GET /v1/conversations/{conversation_id}`                       | Conversation do participante, com `effective_priority`             |
 | `POST /v1/conversations/{conversation_id}/close`                | Seller fecha; ja `closed` responde `409`                           |
 | `POST /v1/conversations/{conversation_id}/messages`             | `201` Message em Conversation `open`                               |
 | `GET /v1/conversations/{conversation_id}/messages`              | janela de 24h UTC (`from`, `to`, `has_older`)                      |
@@ -149,12 +149,67 @@ sem relacao com Conversation ou Order Item recebe `404`. Buyer em
 `POST .../close` recebe `403`. Buyer e Seller em `/v1/ops/*` recebem `403`.
 Ops nas rotas exclusivas de Seller/Buyer recebe `403`; em Conversation/Message
 de participante, `404`. Ops le metadados de Conversation em `/v1/ops`, sem
-Messages.
+Messages. Buyer/Seller (`ConversationResponse`) veem so `effective_priority`
+(derivado); `calculated_priority` e `ops_override` continuam exclusivos de
+`OpsConversation`, so lidos via `/v1/ops/*`.
 
 Nao existe `POST /v1/auth/register`. Usuarios existem so via seed.
 
 O contrato `api/openapi.yaml` e a fonte da verdade e e escrito antes do codigo.
 `tests/integration/test_openapi_contract.py` compara paths e metodos.
+
+## Frontend
+
+Aplicacao nova em `frontend/` (Vite + React + TypeScript), consumindo o
+backend acima via REST. Roadmap em `docs/FRONTEND_IMPLEMENTATION_PLAN.md`,
+uma spec por fase em `docs/FRONTEND_F{n}_SPEC.md`. Ciclo de cada fase:
+revisar contrato -> UX -> spec -> implementar -> testar -> validar no
+browser -> commit -> proxima fase.
+
+Fases concluidas e validadas manualmente pelo usuario:
+
+- **F0 (Foundation)**: projeto, routing, cliente HTTP, auth (JWT em
+  storage), layout e navegacao por role, componentes de UI compartilhados,
+  estados de loading/error/empty.
+- **F1 (Buyer Catalog + Purchase)**: `features/catalog` (listagem e detalhe
+  de produto/oferta), checkout e `features/orders` (Buyer): lista e detalhe
+  de Order, acompanhamento de status.
+- **F2 (Seller Orders)**: `features/seller-orders`: listagem paginada com
+  filtros (status, periodo, busca por id) e detalhe do Order Item.
+- **F3 (Order Item + Communication)**: `StatusActions` (avancar/cancelar
+  status no detalhe do Seller), `features/conversations`
+  (`ConversationPanel`, thread Buyer<->Seller, prop `viewerRole`) e
+  `features/support` (`InternalCommentsPanel`, log Seller<->Ops), ambos
+  visualmente distintos por design. Bug pego em teste manual do usuario logo
+  apos o F3 e corrigido na mesma fase: Conversation so tinha UI do lado do
+  Seller; Buyer nao tinha rota de detalhe de Order Item. Corrigido com
+  `BuyerOrderItemDetailPage` em
+  `/buyer/orders/:orderId/items/:itemId` (o item vem de dentro de
+  `GET /orders/{orderId}`, ja que nao existe `GET /order-items/{id}` para
+  Buyer) e `ConversationPanel` generico o bastante para os dois papeis.
+
+**F4 (Ops Experience)** implementado (2026-09-14), **aguardando validacao
+manual do usuario no browser** antes de contar como fase fechada:
+`OpsQueuePage` (`/ops`, fila de Conversations `open` por prioridade
+efetiva, filtros de `seller_id`/`order_item_id`/`effective_priority`) e
+`OpsConversationDetailPage` (`/ops/conversations/:id`, contexto do Order
+Item + `PriorityActions` — recalcular, marcar/remover `critical` — +
+`InternalCommentsPanel` reaproveitado). Decisao registrada em
+`docs/FRONTEND_F4_SPEC.md`: sem historico de Messages para Ops (backend nao
+permite, por privacidade). Testando o F4, o usuario pediu mais uma coisa:
+o Seller tambem precisa ver a prioridade da propria Conversation — gap real
+de contrato (nao so de UI), resolvido com `effective_priority` em
+`ConversationResponse` (ver `## Contratos de API` e `Historico de
+versoes`); `ConversationPanel` (Buyer e Seller) mostra isso via
+`PriorityBadge`, agora em `components/ui/` por ser reaproveitado entre
+`features/conversations` e `features/ops`.
+
+Gaps reais de contrato encontrados e resolvidos ate aqui: CORS ausente
+(F0), `BuyerOrderItem` sem produto em `GET /v1/orders` (F1) e
+`effective_priority` ausente em `ConversationResponse` (F4).
+
+Ainda nao existe: UI de Notifications (F5) e o polish/responsividade final
+(F6). Ver `docs/FRONTEND_F4_SPEC.md` para o detalhe da ultima fase.
 
 ## Decisoes de contrato e de stack ja tomadas
 
@@ -198,6 +253,11 @@ O contrato `api/openapi.yaml` e a fonte da verdade e e escrito antes do codigo.
   e `ops_override` (`null`/`critical`). `effective_priority` e derivado.
   Recalculo HTTP e `POST .../priority/refresh`. A fila Ops lista Conversations
   `open` pelo snapshot persistido. Ops nao le Messages. GET nao recalcula.
+- `ConversationResponse` (Buyer/Seller) inclui `effective_priority` desde o
+  F4 do frontend (decisao do usuario em 2026-09-13, para o Seller enxergar a
+  prioridade da propria Conversation) — mesmo campo, calculado do mesmo jeito
+  que em `OpsConversation`, mas sem `calculated_priority`/`ops_override`
+  (o breakdown continua exclusivo da Ops).
 - Conversation persiste `priority_calculated_at` (nullable). Order Item persiste
   `status_updated_at`. Nenhum dos dois aparece na API. OPEN e stale quando o
   calculo e nulo, a ultima interacao ou o status sao posteriores, ou o age
@@ -261,12 +321,23 @@ Postgres no ar e nao sobe LocalStack.
 
 ## Proxima etapa
 
-Frontend F1 — Buyer Catalog + Purchase (`docs/FRONTEND_F1_SPEC.md`), sobre a
-fundacao entregue na F0. SLA e transcript Ops no backend continuam sem
+Validacao manual do usuario no browser do F4 (`docs/FRONTEND_F4_SPEC.md`),
+logado como Ops e como Seller (a mudanca de `effective_priority` afeta os
+dois). So depois disso o F4 fecha e a fase muda pra Frontend F5 —
+Notifications. SLA e transcript Ops no backend continuam sem
 especificacao.
 
 ## Historico de versoes
 
+- **0.8.0** — `ConversationResponse` (Buyer/Seller) ganhou `effective_priority`
+  (`api/openapi.yaml`, `app/communication/schemas.py`/`routes.py`), pedido
+  pelo usuario testando o F4 do frontend: Seller precisava ver a prioridade
+  da propria Conversation, nao so a Ops. `calculated_priority`/`ops_override`
+  continuam exclusivos de `OpsConversation`. Teste de contrato
+  (`test_priority.py`) atualizado para essa exposicao deliberada.
+- **0.8.0** — CURRENT_STATE.md atualizado para refletir F0-F3 do frontend
+  concluidos e validados; cabecalho estava com "Fase: F.0" incorreta apos o
+  merge do F3 (PR #12).
 - **0.8.0** — CORS habilitado (`CORS_ORIGINS`) e `BuyerOrderItem` com produto
   em `GET /v1/orders` e `/v1/orders/{id}`, para viabilizar o frontend F0/F1.
 - **0.8.0** — P6.2: Notifications in-app (`NOTIFY_STATUS_CHANGE`), canal

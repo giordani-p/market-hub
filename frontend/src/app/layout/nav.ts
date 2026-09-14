@@ -12,5 +12,5 @@ export const NAV_ITEMS: Record<UserRole, NavItem[]> = {
     { label: 'My Orders', to: '/buyer/orders' },
   ],
   seller: [{ label: 'Orders', to: '/seller/orders' }],
-  ops: [{ label: 'Operations' }, { label: 'Queue' }],
+  ops: [{ label: 'Operations' }, { label: 'Queue', to: '/ops' }],
 }

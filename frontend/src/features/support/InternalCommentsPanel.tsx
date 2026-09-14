@@ -8,8 +8,26 @@ import { formatDateTime } from '../../lib/utils/format'
 import { useAsync } from '../../lib/utils/useAsync'
 import { createInternalComment, fetchInternalComments } from './api'
 
-export function InternalCommentsPanel({ itemId }: { itemId: string }) {
-  const state = useAsync(() => fetchInternalComments(itemId), [itemId])
+type ViewerRole = 'seller' | 'ops'
+
+const PANEL_DESCRIPTION: Record<ViewerRole, string> = {
+  seller: 'Canal entre você e a Ops — o comprador não vê isto.',
+  ops: 'Canal entre você e o Seller — o comprador não vê isto.',
+}
+
+/** Rotulo de quem escreveu, quando nao e o proprio viewer. */
+const OTHER_AUTHOR_LABEL: Record<ViewerRole, string> = {
+  seller: 'Ops',
+  ops: 'Seller',
+}
+
+interface InternalCommentsPanelProps {
+  itemId: string
+  viewerRole?: ViewerRole
+}
+
+export function InternalCommentsPanel({ itemId, viewerRole = 'seller' }: InternalCommentsPanelProps) {
+  const state = useAsync(() => fetchInternalComments(itemId, viewerRole), [itemId, viewerRole])
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
@@ -21,7 +39,7 @@ export function InternalCommentsPanel({ itemId }: { itemId: string }) {
     setSending(true)
     setSendError(null)
     try {
-      await createInternalComment(itemId, draft.trim())
+      await createInternalComment(itemId, draft.trim(), viewerRole)
       setDraft('')
       state.retry()
     } catch (err) {
@@ -34,7 +52,7 @@ export function InternalCommentsPanel({ itemId }: { itemId: string }) {
   return (
     <div className="support-log">
       <h2>Suporte interno</h2>
-      <p className="text-muted">Canal entre você e a Ops — o comprador não vê isto.</p>
+      <p className="text-muted">{PANEL_DESCRIPTION[viewerRole]}</p>
 
       {state.status === 'loading' && <Spinner label="Carregando comentários..." />}
       {state.status === 'error' && <ErrorState message={state.error} onRetry={state.retry} />}
@@ -48,7 +66,7 @@ export function InternalCommentsPanel({ itemId }: { itemId: string }) {
             <li key={comment.id} className="support-entry">
               <span className="support-entry-time">{formatDateTime(comment.created_at)}</span>
               <span className="support-entry-author">
-                {comment.author_type === 'ops' ? 'Ops' : 'Você'}
+                {comment.author_type === viewerRole ? 'Você' : OTHER_AUTHOR_LABEL[viewerRole]}
               </span>
               <span className="support-entry-content">{comment.content}</span>
             </li>

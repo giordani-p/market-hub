@@ -22,6 +22,7 @@
   --color-brand-fg: #333333;
   --color-success: #00a650;
   --color-danger: #e53935;
+  --color-warning: #a6600a;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -37,6 +38,7 @@
     --color-brand-fg: #1a1a1a;
     --color-success: #00c853;
     --color-danger: #ff6659;
+    --color-warning: #e0973a;
   }
 }
 
@@ -481,6 +483,12 @@ body {
   gap: 0.75rem;
 }
 
+.conversation-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 .conversation-empty {
   display: flex;
   flex-direction: column;
@@ -621,4 +629,41 @@ body {
 .support-composer .input {
   flex: 1;
   background: var(--color-bg);
+}
+
+/* Priority (Ops): vocabulario e cor proprios, nunca reaproveita o
+   StatusBadge do Order Item -- prioridade nao e status de pedido. Vermelho
+   solido reservado so para critical, para nao competir com erro/cancelado. */
+.priority-badge {
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.priority-low {
+  background: color-mix(in srgb, var(--color-muted) 20%, transparent);
+  color: var(--color-muted);
+}
+
+.priority-medium {
+  background: color-mix(in srgb, var(--color-primary) 16%, transparent);
+  color: var(--color-primary);
+}
+
+.priority-high {
+  background: color-mix(in srgb, var(--color-warning) 18%, transparent);
+  color: var(--color-warning);
+}
+
+.priority-critical {
+  background: var(--color-danger);
+  color: var(--color-primary-fg);
+}
+
+.priority-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }

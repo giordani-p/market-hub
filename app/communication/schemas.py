@@ -33,6 +33,7 @@ class ConversationResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     last_interaction_at: datetime
+    effective_priority: str
 
 
 class CreateMessageRequest(BaseModel):

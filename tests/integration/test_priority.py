@@ -50,13 +50,19 @@ def _open(client: TestClient, item_id: str, reason: str, headers: dict[str, str]
     return response.json()
 
 
-def test_create_persists_priority_hidden_from_participant(catalog_client: TestClient) -> None:
+def test_create_exposes_effective_priority_but_hides_calculated(
+    catalog_client: TestClient,
+) -> None:
+    """Buyer/Seller veem so o resultado (effective_priority), nunca o
+    breakdown interno (calculated_priority/ops_override) que so a Ops le.
+    """
     product = _product(catalog_client)
     offer = _offer(catalog_client, product["id"], seller_a_headers(catalog_client), "299.00")
     item = _checkout(catalog_client, offer["id"], "299.00")
     created = _open(catalog_client, item["id"], "atraso", buyer_headers(catalog_client))
     assert "calculated_priority" not in created
-    assert "effective_priority" not in created
+    assert "ops_override" not in created
+    assert created["effective_priority"] in {"low", "medium", "high", "critical"}
 
     ops = ops_headers(catalog_client)
     detail = catalog_client.get(f"/v1/ops/conversations/{created['id']}", headers=ops)
@@ -65,10 +71,14 @@ def test_create_persists_priority_hidden_from_participant(catalog_client: TestCl
     assert body["calculated_priority"] in {"low", "medium", "high"}
     assert body["ops_override"] is None
     assert body["effective_priority"] == body["calculated_priority"]
+    assert body["effective_priority"] == created["effective_priority"]
+
     participant = catalog_client.get(
         f"/v1/conversations/{created['id']}", headers=buyer_headers(catalog_client)
     )
     assert "calculated_priority" not in participant.json()
+    assert "ops_override" not in participant.json()
+    assert participant.json()["effective_priority"] == body["effective_priority"]
 
 
 def _advance_item_to_in_transit(client: TestClient, item_id: str, headers: dict[str, str]) -> None:

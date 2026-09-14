@@ -29,6 +29,7 @@ const openConv: Conversation = {
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',
   last_interaction_at: '2026-01-01T00:00:00Z',
+  effective_priority: 'medium',
 }
 
 function message(overrides: Partial<Message>): Message {
@@ -102,6 +103,14 @@ describe('ConversationPanel', () => {
 
     expect(await screen.findByText('Esta conversa está encerrada.')).toBeInTheDocument()
     expect(screen.queryByPlaceholderText('Escrever mensagem...')).not.toBeInTheDocument()
+  })
+
+  it("shows the open conversation's priority", async () => {
+    fetchItemConversations.mockResolvedValue([openConv])
+    fetchMessages.mockResolvedValue({ items: [], from: '', to: '', has_older: false })
+    render(<ConversationPanel itemId="item-1" viewerRole="seller" />)
+
+    expect(await screen.findByText('Média')).toBeInTheDocument()
   })
 
   it('flips which side is "mine" when the viewer is the buyer', async () => {

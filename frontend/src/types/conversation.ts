@@ -3,6 +3,10 @@ export type ConversationStatus = 'open' | 'closed'
 export type ConversationReason =
   'atraso' | 'troca' | 'devolucao' | 'reclamacao' | 'suporte' | 'elogio' | 'outros'
 
+/** Resultado final da PriorityPolicy. Buyer/Seller so veem isto -- nunca o
+ *  breakdown (calculated_priority/ops_override), que e exclusivo da Ops. */
+export type EffectivePriority = 'low' | 'medium' | 'high' | 'critical'
+
 export interface Conversation {
   id: string
   order_item_id: string
@@ -11,6 +15,7 @@ export interface Conversation {
   created_at: string
   updated_at: string
   last_interaction_at: string
+  effective_priority: EffectivePriority
 }
 
 export type MessageAuthorType = 'buyer' | 'seller' | 'system'
