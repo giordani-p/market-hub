@@ -31,14 +31,15 @@ src/
     router/     rotas e guardas de acesso
     providers/  AuthProvider e contexto de auth
   components/
-    ui/         primitivos (Button, Field, Tag, Tabs, Skeleton, ...)
+    ui/         primitivos (Button, Field, Tag, Tabs, Skeleton, Logo, ...)
     data/       Table, FilterBar, DetailList
     layout/     Page, PageHeader, Section, Breadcrumbs
     feedback/   Spinner, EmptyState, ErrorState, FormError
-    overlay/    Dialog, ConfirmDialog, Toast
+    overlay/    Dialog, ConfirmDialog, ToastProvider
   features/     uma pasta por dominio (catalog, orders, ops, ...)
   lib/          cliente HTTP, auth, hooks e formatadores
   styles/       tokens e base globais
+  test/         setup do Vitest e renderWithProviders
   types/        contratos da API
 ```
 
@@ -65,6 +66,9 @@ Regras que valem em todo lugar:
   nao aceita variavel em `@media`. A escala esta documentada no topo de
   `tokens.css`.
 - Tema unico claro. Nao ha dark mode, por decisao de produto.
+- A marca (`Logo`) e o quadrado azul com a sacola, o mesmo simbolo do
+  `public/favicon.svg`. A cor do wordmark vem de `currentColor`: quem
+  decide e o contexto.
 
 A linguagem visual esta em `.cursor/skills/frontend-design-patterns`.
 
@@ -73,16 +77,46 @@ A linguagem visual esta em `.cursor/skills/frontend-design-patterns`.
 | Grupo        | Componentes                                                                                               |
 | ------------ | --------------------------------------------------------------------------------------------------------- |
 | Acao         | `Button` (`primary`/`secondary`/`tertiary`/`destructive`, `loading`, `fullWidth`)                         |
-| Formulario   | `Field`, `TextField`, `SelectField`, `TextAreaField`, `Checkbox`, `Radio`                                 |
+| Formulario   | `Field`, `TextField` (com slot `trailing`), `SelectField`, `TextAreaField`, `Checkbox`, `Radio`           |
 | Dado         | `Table` (+ `TableHead`, `TableRow`, `TableCell`, `TableRowLink`), `DetailList`, `FilterBar`, `Pagination` |
 | Layout       | `Page`, `PageHeader`, `Section`, `Breadcrumbs`, `Card`                                                    |
 | Estado       | `Skeleton`, `SkeletonList`, `Spinner`, `EmptyState`, `ErrorState`, `FormError`                            |
 | Sobreposicao | `Dialog`, `ConfirmDialog`, `ToastProvider` + `useToast`, `Tooltip`                                        |
-| Sinalizacao  | `Tag`, `StatusBadge`, `PriorityBadge`, `Avatar`                                                           |
+| Sinalizacao  | `Tag`, `StatusBadge`, `PriorityBadge`, `Avatar`, `Logo`                                                   |
 | Navegacao    | `Tabs`                                                                                                    |
 
 Antes de criar um componente novo, procure reuso. `lucide-react` e a unica
 biblioteca de icones.
+
+## Hooks compartilhados
+
+Em `lib/utils/`, e usados pelas telas de lista:
+
+| Hook                | Para que                                                                      |
+| ------------------- | ----------------------------------------------------------------------------- |
+| `useAsync`          | Um fetch com `loading`/`success`/`error` e `retry`                            |
+| `useUrlFilters`     | Filtros na query string; trocar um filtro volta para a primeira pagina        |
+| `useDebouncedValue` | Atrasa o valor aplicado de um campo de texto (300ms por padrao)               |
+| `useMediaQuery`     | So quando o layout muda de **estrutura** (paineis que viram abas). CSS antes. |
+
+`isCompleteUuid`, em `useUrlFilters.ts`, valida os filtros de ID antes do
+fetch — o backend so compara por igualdade.
+
+## Logica de tela
+
+Regra de apresentacao que nao e render mora em modulo proprio, ao lado da
+tela, como funcao pura e testada antes da UI. O catalogo e o exemplo
+completo:
+
+```text
+features/catalog/
+  catalogRows.ts     cruza produto e oferta; deriva menor preco, lojas, estoque
+  catalogFilters.ts  busca sem acento, faixa de preco, disponibilidade
+  catalogSort.ts     ordenacoes e a posicao de quem nao tem preco
+```
+
+A tela consome essas funcoes com `useMemo`; o cruzamento nao acontece
+dentro do `.map`.
 
 ## Convencoes
 
@@ -92,5 +126,12 @@ biblioteca de icones.
 - Acao irreversivel passa por `ConfirmDialog`.
 - Filtro de lista vive na URL: a tela filtrada e um link e o botao voltar
   desfaz o filtro.
+- Lista operacional densa e `Table`, que vira lista de cards abaixo de
+  `md`, com o rotulo da coluna repetido em cada celula.
+- Estado vazio distingue "ainda nao existe" de "nada corresponde ao
+  filtro"; o segundo oferece limpar os filtros.
+- Contagem de resultado fica em regiao viva (`role="status"`), senao
+  aplicar um filtro nao avisa quem usa leitor de tela.
 - Teste consulta por papel e texto acessivel, nunca por classe de estilo.
+  Componente que depende de provider usa `test/renderWithProviders`.
 - Todo controle tem rotulo; icone isolado tem `aria-label` ou `Tooltip`.
