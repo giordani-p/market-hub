@@ -27,6 +27,7 @@ export function AppLayout() {
               <NavLink
                 key={item.label}
                 to={item.to}
+                end={item.end}
                 className={({ isActive }) =>
                   `app-nav-item app-nav-link${isActive ? ' app-nav-link-active' : ''}`
                 }

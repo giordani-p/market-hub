@@ -68,6 +68,21 @@ describe('SellerOrdersListPage', () => {
     })
   })
 
+  it('initializes the status filter from the query string', async () => {
+    fetchSellerOrderItems.mockResolvedValue(response())
+    render(
+      <MemoryRouter initialEntries={['/seller/orders?status=delivered']}>
+        <SellerOrdersListPage />
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => {
+      expect(fetchSellerOrderItems).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'delivered', page: 1 }),
+      )
+    })
+  })
+
   it('shows the empty state when there are no items', async () => {
     fetchSellerOrderItems.mockResolvedValue(response({ items: [], total: 0 }))
     render(

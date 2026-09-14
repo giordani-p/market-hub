@@ -78,6 +78,21 @@ describe('OpsQueuePage', () => {
     })
   })
 
+  it('initializes the priority filter from the query string', async () => {
+    fetchOpsConversationQueue.mockResolvedValue(response())
+    render(
+      <MemoryRouter initialEntries={['/ops/queue?effective_priority=critical']}>
+        <OpsQueuePage />
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => {
+      expect(fetchOpsConversationQueue).toHaveBeenCalledWith(
+        expect.objectContaining({ effectivePriority: 'critical', page: 1 }),
+      )
+    })
+  })
+
   it('shows the empty state when there are no open conversations', async () => {
     fetchOpsConversationQueue.mockResolvedValue(response({ items: [], total: 0 }))
     render(

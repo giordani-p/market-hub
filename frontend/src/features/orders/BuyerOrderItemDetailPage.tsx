@@ -7,6 +7,7 @@ import { ConversationPanel } from '../conversations/ConversationPanel'
 import { formatCurrencyBRL, formatDate } from '../../lib/utils/format'
 import { useAsync } from '../../lib/utils/useAsync'
 import { fetchOrder } from './api'
+import { BuyerCancelActions } from './BuyerCancelActions'
 
 export function BuyerOrderItemDetailPage() {
   const { orderId, itemId } = useParams<{ orderId: string; itemId: string }>()
@@ -47,6 +48,8 @@ export function BuyerOrderItemDetailPage() {
           </dd>
         </dl>
       </Card>
+
+      <BuyerCancelActions itemId={item.id} status={item.status} onChanged={state.retry} />
 
       <ConversationPanel itemId={item.id} viewerRole="buyer" />
     </div>

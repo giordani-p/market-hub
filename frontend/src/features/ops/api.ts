@@ -4,6 +4,8 @@ import type {
   OpsConversationQueueFilters,
   OpsConversationQueueResponse,
   OpsOrderItemDetail,
+  OpsOrderItemFilters,
+  OpsOrderItemListResponse,
 } from '../../types/ops'
 
 export function buildOpsConversationQueueQuery(filters: OpsConversationQueueFilters): string {
@@ -63,4 +65,43 @@ export function removeOpsCritical(conversationId: string): Promise<OpsConversati
   return apiRequest<OpsConversation>(`/ops/conversations/${conversationId}/critical/remove`, {
     method: 'POST',
   })
+}
+
+export function buildOpsOrderItemsQuery(filters: OpsOrderItemFilters): string {
+  const params = new URLSearchParams()
+  if (filters.page !== undefined) {
+    params.set('page', String(filters.page))
+  }
+  if (filters.pageSize !== undefined) {
+    params.set('page_size', String(filters.pageSize))
+  }
+  if (filters.status) {
+    params.set('status', filters.status)
+  }
+  if (filters.from) {
+    params.set('from', filters.from)
+  }
+  if (filters.to) {
+    params.set('to', filters.to)
+  }
+  if (filters.orderItemId) {
+    params.set('order_item_id', filters.orderItemId)
+  }
+  if (filters.sellerId) {
+    params.set('seller_id', filters.sellerId)
+  }
+  const query = params.toString()
+  return query ? `?${query}` : ''
+}
+
+export function fetchOpsOrderItems(
+  filters: OpsOrderItemFilters,
+): Promise<OpsOrderItemListResponse> {
+  return apiRequest<OpsOrderItemListResponse>(
+    `/ops/order-items${buildOpsOrderItemsQuery(filters)}`,
+  )
+}
+
+export function fetchOpsItemConversations(itemId: string): Promise<OpsConversation[]> {
+  return apiRequest<OpsConversation[]>(`/ops/order-items/${itemId}/conversations`)
 }

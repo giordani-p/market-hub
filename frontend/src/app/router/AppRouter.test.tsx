@@ -49,6 +49,21 @@ describe('AppRouter — guarda de rota', () => {
 
     render(<AppRouter />)
 
-    expect(screen.getByRole('heading', { name: 'Meus Order Items' })).toBeInTheDocument()
+    expect(screen.getByText('Carregando início...')).toBeInTheDocument()
+  })
+
+  it('keeps the ops queue on /ops/queue', () => {
+    setPath('/ops/queue')
+    mockUseAuth.mockReturnValue({
+      status: 'authenticated',
+      user: { id: '2', email: 'ops@x.test', name: 'Ops Demo', role: 'ops', seller_id: null },
+      login: vi.fn(),
+      logout: vi.fn(),
+    })
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise(() => {}))
+
+    render(<AppRouter />)
+
+    expect(screen.getByRole('heading', { name: 'Fila de Ops' })).toBeInTheDocument()
   })
 })

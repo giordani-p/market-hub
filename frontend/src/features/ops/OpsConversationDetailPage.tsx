@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { Card } from '../../components/ui/Card'
 import { PriorityBadge } from '../../components/ui/PriorityBadge'
 import { StatusBadge } from '../../components/ui/StatusBadge'
@@ -68,6 +68,9 @@ export function OpsConversationDetailPage() {
       </Card>
 
       <p className="text-muted">Conteúdo da conversa com o Buyer não é visível para Ops.</p>
+      <p>
+        <Link to={`/ops/order-items/${item.id}`}>Ver item</Link>
+      </p>
 
       <PriorityActions conversation={conversation} onChanged={state.retry} />
 

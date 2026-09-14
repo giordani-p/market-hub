@@ -83,6 +83,8 @@ F4 — Ops Experience
 F5 — Notifications
         ↓
 F6 — UX Polish + Integration
+        ↓
+F7 — Dashboard + gaps de jornada
 ```
 
 ---
@@ -498,6 +500,33 @@ Frontend integrado e pronto para demonstração/avaliação, com as principais j
 
 ---
 
+# 11.1 F7 — Dashboard + gaps de jornada
+
+## Objetivo
+
+Entregar a home operacional (`GET /v1/dashboard`) e fechar as rotas de
+jornada que o backend já expõe e o frontend ainda não usa: cancelamento
+do Buyer, listagem global de Order Items da Ops e CRUD de ofertas do Seller.
+
+O detalhe da fase está em `docs/FRONTEND_F7_SPEC.md`.
+
+## Escopo
+
+- Dashboard por papel (Seller/Ops como home; Buyer com Início extra)
+- Catálogo compartilhado em `/catalog`
+- Filtros de lista sincronizados com a URL
+- Cancelamento do Buyer em `placed`/`preparing`
+- Lista e detalhe Ops de Order Items (histórico de conversas, sem Messages)
+- Minhas ofertas (Product + Offer)
+
+## Resultado esperado
+
+Cada ator responde a pergunta da home sem montar a tela com N chamadas,
+e as 40 rotas de jornada do backend têm tela correspondente (exceto
+`GET /v1/health`).
+
+---
+
 # 12. Navegação Proposta
 
 A navegação deve refletir os contextos do produto.
@@ -508,14 +537,14 @@ A navegação deve refletir os contextos do produto.
 ┌──────────────────────────────┐
 │ Market Hub        🔔  User   │
 ├──────────────────────────────┤
-│ Catalog                      │
-│ My Orders                    │
-│                              │
+│ Início                       │
+│ Catálogo                     │
+│ Meus pedidos                 │
 │                              │
 └──────────────────────────────┘
 ```
 
-A navegação do Buyer deve priorizar descoberta de produtos, compra e acompanhamento dos próprios pedidos.
+A navegação do Buyer deve priorizar descoberta de produtos, compra e acompanhamento dos próprios pedidos. O login cai no catálogo; Início abre o Dashboard.
 
 ## Seller
 
@@ -523,10 +552,10 @@ A navegação do Buyer deve priorizar descoberta de produtos, compra e acompanha
 ┌──────────────────────────────┐
 │ Market Hub        🔔  User   │
 ├──────────────────────────────┤
-│ Orders                       │
-│                              │
-│                              │
-│                              │
+│ Início                       │
+│ Catálogo                     │
+│ Pedidos                      │
+│ Minhas ofertas               │
 └──────────────────────────────┘
 ```
 
@@ -540,10 +569,10 @@ Uma área dedicada de Conversations pode existir futuramente caso seja necessár
 ┌──────────────────────────────┐
 │ Market Hub        🔔  User   │
 ├──────────────────────────────┤
-│ Operations                   │
-│   Queue                      │
-│                              │
-│                              │
+│ Início                       │
+│ Catálogo                     │
+│ Fila                         │
+│ Pedidos                      │
 └──────────────────────────────┘
 ```
 

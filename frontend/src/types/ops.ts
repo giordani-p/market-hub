@@ -62,3 +62,32 @@ export interface OpsOrderItemDetail {
   seller: SellerSummary
   order: { id: string; created_at: string }
 }
+
+export interface OpsOrderItemListItem {
+  order_item_id: string
+  product: Pick<Product, 'id' | 'name'>
+  quantity: number
+  purchase_price: string
+  status: OrderItemStatus
+  created_at: string
+  buyer: BuyerSummary
+  seller: SellerSummary
+  order_id: string
+}
+
+export interface OpsOrderItemListResponse {
+  items: OpsOrderItemListItem[]
+  page: number
+  page_size: number
+  total: number
+}
+
+export interface OpsOrderItemFilters {
+  page?: number
+  pageSize?: number
+  status?: OrderItemStatus
+  from?: string
+  to?: string
+  orderItemId?: string
+  sellerId?: string
+}
