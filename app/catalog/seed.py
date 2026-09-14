@@ -1,8 +1,8 @@
 """Seed de vendedores e usuarios de demonstracao."""
 
+from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.catalog.models import Seller
@@ -17,12 +17,19 @@ SEED_SELLERS = (
 )
 
 
+def add_if_missing(session: Session, entity: object) -> bool:
+    """Insere a entidade se o id ainda nao existir. Retorna True se inseriu."""
+    entity_id = entity.id
+    if session.get(type(entity), entity_id) is None:
+        session.add(entity)
+        return True
+    return False
+
+
 def seed_sellers(session: Session) -> None:
     """Insere os vendedores fixos se ainda nao existirem."""
     for seller in SEED_SELLERS:
-        exists = session.scalar(select(Seller.id).where(Seller.id == seller.id))
-        if exists is None:
-            session.add(Seller(id=seller.id, name=seller.name))
+        add_if_missing(session, Seller(id=seller.id, name=seller.name))
 
 
 def seed_all(session: Session, password: str | None = None) -> None:
@@ -33,9 +40,35 @@ def seed_all(session: Session, password: str | None = None) -> None:
     seed_users(session, password)
 
 
+def seed_demo(session: Session, password: str | None = None) -> None:
+    """Dataset rico de marketplace. Nao e usado pelos testes de catalog_client."""
+    from app.auth.seed import seed_demo_users
+    from app.catalog.demo import seed_demo_catalog, seed_demo_sellers
+    from app.communication.seed import seed_demo_conversations
+    from app.notifications.seed import seed_demo_notifications
+    from app.orders.seed import seed_demo_orders
+    from app.support.seed import seed_demo_comments
+
+    now = datetime.now(UTC)
+    seed_demo_sellers(session)
+    session.flush()
+    seed_demo_users(session, password)
+    session.flush()
+    seed_demo_catalog(session)
+    session.flush()
+    seed_demo_orders(session, now)
+    session.flush()
+    seed_demo_conversations(session, now)
+    session.flush()
+    seed_demo_comments(session, now)
+    session.flush()
+    seed_demo_notifications(session, now)
+
+
 def main() -> None:
     with get_session_factory()() as session:
         seed_all(session)
+        seed_demo(session)
         session.commit()
 
 

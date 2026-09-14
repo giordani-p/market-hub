@@ -59,7 +59,9 @@ O estado atual do codigo esta em [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md
 - **InternalComment** liga Seller e Ops ao mesmo Order Item, sem Conversation.
 - Escritas de Offer e Order Item usam o Seller do JWT. Checkout usa o Buyer do JWT.
   Ops nao herda essas escritas; opera em `/v1/ops`.
-- Users de seed tem `name` (Loja A, Loja B, Buyer Demo, Ops Demo).
+- `make seed` popula um marketplace de demonstracao (20 users, catalogo, pedidos
+  e jornadas). Os testes usam so a identidade minima (Loja A, Loja B, Buyer Demo,
+  Ops Demo).
 
 ## Requisitos
 
@@ -72,14 +74,18 @@ O estado atual do codigo esta em [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md
 ```bash
 cp .env.example .env   # preencha Postgres, JWT_SECRET e SEED_PASSWORD
 make install
-make db-up             # sobe o Postgres, espera ficar saudavel e cria o banco de teste
-make migrate           # aplica as migrations
-make seed              # cria Loja A, Loja B, um buyer e um ops de demonstracao
+make reset             # recria o volume do Postgres, aplica migrations e a seed completa
 make run
 ```
 
+`make reset` executa `docker compose down -v`, sobe o Postgres, `make migrate` e
+`make seed`. Apaga **todos** os dados locais do Postgres (app e banco de teste).
+`make db-down` so derruba os containers e **nao** apaga o volume.
+
+Ambiente que ja tem o banco: `make migrate` e `make seed` (a seed e idempotente).
+Passo a passo equivalente ao reset: `make db-up`, `make migrate`, `make seed`.
+
 A API sobe em `http://localhost:8000` e as rotas ficam sob o prefixo `/v1`.
-`make db-down` derruba o banco.
 
 Para o Worker e a reconcilacao periodica (LocalStack + SQS):
 
@@ -87,6 +93,9 @@ Para o Worker e a reconcilacao periodica (LocalStack + SQS):
 make jobs-up           # sobe Postgres, LocalStack e o Worker
 make enqueue-reconcile # publica RECONCILE_PRIORITIES na hora, sem esperar 15 min
 ```
+
+`make jobs-up` **nao** entra no `reset`: rode depois se quiser LocalStack e Worker
+(as filas sao recriadas; o Worker ja ve o banco populado).
 
 O e-mail de alerta (prioridade `high`/`critical`) e simulado no log do
 Worker, nao na API (`docker compose logs -f worker`). Destinatario extra
@@ -97,9 +106,11 @@ A Rule do EventBridge dispara a cada 15 minutos. Para conferir a DLQ, publique
 uma mensagem invalida na fila e receba-a ate `JOBS_MAX_RECEIVE_COUNT` (3).
 `make test` nao sobe LocalStack.
 
-Login: `POST /v1/auth/login` com o email de seed (`loja-a@example.com`,
-`loja-b@example.com`, `buyer@example.com`, `ops@example.com`) e a senha de
-`SEED_PASSWORD`.
+Login canonico: `POST /v1/auth/login` com `loja-a@example.com`,
+`loja-b@example.com`, `buyer@example.com` ou `ops@example.com` e a senha de
+`SEED_PASSWORD`. A seed completa cria outros users `*@example.com` (sellers e
+buyers extras) com a mesma senha. Loja A, Buyer Demo e Ops Demo ja entram com
+pedidos, conversas e notificacoes para percorrer as jornadas.
 
 ## Persistencia
 
@@ -149,8 +160,8 @@ implementacao. O fluxo de qualquer mudanca na API e:
 | `app/database.py` | engine, sessao e publicacao de eventos apos commit |
 | `app/health.py` | health check |
 | `app/auth/` | login, JWT e seed de users |
-| `app/catalog/` | rotas, schemas, modelos e seed do Catalogo |
-| `app/orders/` | checkout, listagem operacional do Seller, status, cancelamento |
+| `app/catalog/` | rotas, schemas, modelos, seed de identidade e catalogo demo |
+| `app/orders/` | checkout, listagem operacional do Seller, status, cancelamento e seed de pedidos |
 | `app/communication/` | Conversation, Messages, encerramento por inatividade, prioridade e reconcilacao |
 | `app/support/` | listagem Ops, InternalComment, fila e override critical |
 | `app/jobs/` | fundacao de Jobs, Worker SQS e enqueue |

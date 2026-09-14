@@ -1,8 +1,8 @@
 # Estado atual do projeto
 
-- **Versao**: 0.10.0
-- **Fase**: P6.3 Email channel — COMPLETE
-- **Commit de referencia**: 3d0ab7a
+- **Versao**: 0.11.0
+- **Fase**: F8 Refatoracao de UI e Design System — COMPLETE (backend em P6.3)
+- **Commit de referencia**: d330575
 - **Repositório**: https://github.com/giordani-p/market-hub
 
 ## Do que se trata
@@ -66,8 +66,8 @@ a fila Ops pode ficar ate cerca de 15 minutos defasada. E-mail de alerta
 | `app/database.py`    | `Base`, engine, `session_transaction()` (commit + publish)                              |
 | `app/health.py`      | router e schema do health check                                                         |
 | `app/auth/`          | `User` (com `name` e `role` buyer/seller/ops), login, `/me`, JWT, seed                  |
-| `app/catalog/`       | modelos, schemas, CRUD de Produto/Oferta e seed de sellers                              |
-| `app/orders/`        | checkout, listagem/detalhe do Seller, status e cancelamento                             |
+| `app/catalog/`       | modelos, schemas, CRUD de Produto/Oferta, seed de identidade e catalogo demo            |
+| `app/orders/`        | checkout, listagem/detalhe do Seller, status, cancelamento e seed de pedidos demo       |
 | `app/communication/` | Conversation, Messages, lazy close, batch de inatividade, PriorityPolicy e reconcilacao |
 | `app/support/`       | listagem/detalhe Ops, InternalComment, fila e override critical                         |
 | `app/jobs/`          | Job, registry, adapter SQS, Worker e enqueue                                            |
@@ -251,6 +251,25 @@ Fases concluidas e validadas manualmente pelo usuario:
   (`/ops/order-items`, historico de conversas sem Messages). Minhas
   ofertas do Seller (`/seller/offers`, CRUD de Offer e Product). Nav em
   PT-BR. Sem mudanca de contrato de backend.
+- **F8 (Refatoracao de UI e Design System)**: especificada em
+  `docs/FRONTEND_F8_SPEC.md`. Sem mudanca de rota, de contrato ou de fluxo
+  de dados — so a camada de apresentacao. O CSS global unico de 905 linhas
+  deu lugar a `styles/tokens.css` + `styles/base.css` mais um CSS Module
+  por componente; os tokens passaram a cobrir espacamento, tipografia,
+  raio, elevacao e layout, alem das cores (preservadas valor a valor, com
+  a adicao de `--color-canvas` e `--color-surface-subtle`). `AppLayout`
+  reescrito: header fixo com busca global e menu de usuario, nav
+  horizontal para Buyer e sidebar recolhivel para Seller/Ops, drawer
+  abaixo de `md`, skip link, landmarks e foco no `h1` a cada rota. As
+  quatro listas operacionais viram `Table` (lista de cards abaixo de
+  `md`), com `FilterBar`, chips de filtro ativo, filtros na URL e debounce
+  de 300ms. `Dialog`, `ConfirmDialog`, `Toast`, `Tabs`, `Skeleton`,
+  `Tooltip`, `Pagination`, `Field`/`TextField`/`SelectField`/
+  `TextAreaField`/`Checkbox`, `Tag`, `Avatar`, `Breadcrumbs`,
+  `PageHeader`, `Page` e `Section` sao os primitivos novos. Vocabulario da
+  interface passou a PT-BR de produto ("Pedidos" no lugar de "Meus Order
+  Items", "Fila de atendimento" no lugar de "Fila de Ops", "Vendedor" no
+  lugar de "Seller (UUID)").
 
 Gaps reais de contrato encontrados e resolvidos ate aqui: CORS ausente
 (F0), `BuyerOrderItem` sem produto em `GET /v1/orders` (F1),
@@ -259,8 +278,33 @@ Gaps reais de contrato encontrados e resolvidos ate aqui: CORS ausente
 proprio item (F5).
 
 Ainda nao existe: UI de Notifications push/real-time (fora de escopo,
-so poll); qualquer coisa alem do que este documento ja descreve. Ver
-`docs/FRONTEND_F7_SPEC.md` para o detalhe da ultima fase fechada.
+so poll); ordenacao por coluna nas tabelas (nenhuma rota do backend aceita
+parametro de sort, e ordenar so a pagina atual no cliente engana mais do
+que ajuda); busca parcial por vendedor ou item (os filtros de ID exigem
+UUID exato, como o backend compara); filtro de catalogo no servidor
+(continua no cliente); imagem de produto; qualquer coisa alem do que este
+documento ja descreve. Ver `docs/FRONTEND_F8_SPEC.md` para o detalhe da
+ultima fase fechada.
+
+### Convencoes de estilo do frontend
+
+- Cor, espacamento, tipografia, raio, elevacao e layout so entram por
+  token de `styles/tokens.css`. Nenhum hex, `px` ou `rem` solto em
+  componente.
+- Estilo de componente vive em `Componente.module.css` ao lado do `.tsx`.
+  `styles/base.css` guarda so reset, elementos base e dois utilitarios
+  (`.text-muted`, `.sr-only`).
+- Sombra so em camada flutuante (dropdown, dialog, toast). Superficie
+  inline se separa por borda, como a skill do projeto pede.
+- Breakpoints usados literalmente: 480, 768, 1024 e 1200px. CSS nativo nao
+  aceita variavel em `@media`; a escala esta documentada no topo de
+  `tokens.css`.
+- Divergencia conhecida e nao resolvida: a skill
+  `.cursor/skills/frontend-design-patterns` nomeia os tokens
+  `--color-background`, `--color-action-primary` e `--color-error`,
+  enquanto o codigo usa `--color-canvas`, `--color-primary` e
+  `--color-danger` desde o F0. Os valores sao os mesmos; so os nomes
+  divergem. Renomear e uma decisao em aberto.
 
 ## Decisoes de contrato e de stack ja tomadas
 
@@ -294,8 +338,14 @@ so poll); qualquer coisa alem do que este documento ja descreve. Ver
 - Estoque consumido com `UPDATE ... WHERE stock >= quantity`; cancelamento antes de
   `in_transit` recompõe estoque.
 - Mutacoes de Order Item relêem o registro com `SELECT ... FOR UPDATE`.
-- Users de seed: Loja A, Loja B, Buyer Demo e Ops Demo, com `name`. Senha em
+- Users de seed: identidade minima (Loja A, Loja B, Buyer Demo, Ops Demo) em
+  `seed_all`, usada pelos testes. `make seed` acrescenta `seed_demo`: 20 users
+  (8 sellers, 11 buyers, 1 ops), 32 produtos, ofertas concorrentes, pedidos em
+  todos os status e jornadas (conversas, comments, notifications). Senha em
   `SEED_PASSWORD`. `User.role` e `buyer`, `seller` ou `ops`.
+- `make reset` recria o volume `postgres-data` (`docker compose down -v`), sobe
+  o Postgres, aplica migrations e a seed completa. `make db-down` nao apaga o
+  volume. `make jobs-up` continua opcional depois do reset.
 - Conversation: uma `open` por Order Item (indice unico parcial). Status
   `open`/`closed`. Motivos: `atraso`, `troca`, `devolucao`, `reclamacao`,
   `suporte`, `elogio`, `outros`.
@@ -386,10 +436,22 @@ Postgres no ar e nao sobe LocalStack.
 ## Proxima etapa
 
 SLA e transcript Ops no backend continuam sem especificacao. O roadmap
-frontend F0-F7 esta completo.
+frontend F0-F8 esta completo.
 
 ## Historico de versoes
 
+- **0.11.0** — F8 do frontend: refatoracao de UI e design system. Tokens de
+  espacamento/tipografia/raio/elevacao, CSS Modules no lugar do CSS global
+  unico, novo app shell (busca global, nav por papel, drawer, skip link,
+  foco por rota), listas operacionais em tabela com filtros na URL,
+  `Dialog`/`Toast`/`Tabs`/`Skeleton` e vocabulario da interface em PT-BR de
+  produto. Paleta preservada valor a valor, com `--color-canvas` e
+  `--color-surface-subtle` adicionados para separar fundo de pagina de
+  superficie. Sem mudanca de contrato de backend.
+- **0.10.0** — Seed de marketplace: `make seed` popula 20 users, 32 produtos,
+  ofertas, pedidos em todos os status e jornadas (conversas, comments,
+  notifications). `make reset` recria o volume do Postgres. Testes seguem com
+  `seed_all` minimo.
 - **0.10.0** — P6.3: canal de e-mail simulado no console do Worker quando
   `effective_priority` vira `high` ou `critical`. Destinatarios: e-mail do
   Seller + `NOTIFICATION_EMAIL_EXTRA_TO`. Sem SMTP, sem novo Job, sem UI.
