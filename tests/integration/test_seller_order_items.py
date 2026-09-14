@@ -200,7 +200,11 @@ def test_detail_payload_and_isolation(catalog_client: TestClient) -> None:
     assert missing.status_code == 404
 
 
-def test_buyer_cannot_use_seller_queries(catalog_client: TestClient) -> None:
+def test_buyer_cannot_list_but_can_get_own_item_detail(catalog_client: TestClient) -> None:
+    """Listagem continua exclusiva do Seller; o detalhe do proprio item e
+    liberado pro Buyer desde o F5 do frontend, pro deep link de Notification
+    (entity_type=ORDER_ITEM) resolver o order_id que a rota do Buyer exige.
+    """
     product = _product(catalog_client)
     offer = _offer(catalog_client, product["id"], seller_a_headers(catalog_client))
     item = _checkout(catalog_client, offer["id"])
@@ -208,8 +212,15 @@ def test_buyer_cannot_use_seller_queries(catalog_client: TestClient) -> None:
 
     listed = catalog_client.get("/v1/order-items", headers=buyer)
     assert listed.status_code == 403
+
     detail = catalog_client.get(f"/v1/order-items/{item['id']}", headers=buyer)
-    assert detail.status_code == 403
+    assert detail.status_code == 200
+    body = detail.json()
+    assert body["id"] == item["id"]
+    assert "order" in body and "id" in body["order"]
+    assert "price" not in body
+    assert "stock" not in body
+
     anonymous = catalog_client.get("/v1/order-items")
     assert anonymous.status_code == 401
 

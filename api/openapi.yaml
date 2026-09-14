@@ -406,7 +406,7 @@ paths:
     get:
       tags:
         - order-items
-      summary: Get an order item of the authenticated seller
+      summary: Get an order item of the authenticated buyer or seller
       security:
         - BearerAuth: []
       responses:
