@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     jobs_wait_time_seconds: int = 10
     reconcile_page_size: int = 50
     jobs_schedule_expression: str = "rate(15 minutes)"
+    notification_email_extra_to: str = ""
 
     @property
     def cors_origins_list(self) -> list[str]:

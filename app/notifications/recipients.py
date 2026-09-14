@@ -47,6 +47,42 @@ def seller_and_ops_for_item(session: Session, item: OrderItem) -> list[UUID]:
     return recipients
 
 
+def merge_email_recipients(seller_email: str | None, extra: str) -> list[str]:
+    """Seller primeiro, extra depois. Strip, ignora vazio, sem duplicata."""
+    addresses: list[str] = []
+    seen: set[str] = set()
+    for raw in (seller_email, extra):
+        if raw is None:
+            continue
+        address = raw.strip()
+        if not address or address in seen:
+            continue
+        seen.add(address)
+        addresses.append(address)
+    return addresses
+
+
+def seller_email_for_item(session: Session, item: OrderItem) -> str | None:
+    offer = session.get(Offer, item.offer_id)
+    if offer is None:
+        return None
+    user_id = seller_user_id(session, offer.seller_id)
+    if user_id is None:
+        return None
+    user = session.get(User, user_id)
+    if user is None:
+        return None
+    return user.email
+
+
+def resolve_email_recipients(
+    session: Session, *, entity_id: UUID, entity_type: str, extra: str
+) -> list[str]:
+    item = _load_item(session, entity_id=entity_id, entity_type=entity_type)
+    seller_email = seller_email_for_item(session, item) if item is not None else None
+    return merge_email_recipients(seller_email, extra)
+
+
 def resolve_recipients(
     session: Session, *, notification_type: str, entity_id: UUID, entity_type: str
 ) -> list[UUID]:

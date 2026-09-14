@@ -16,3 +16,4 @@ def test_jobs_settings_have_local_defaults() -> None:
     assert settings.reconcile_page_size == 50
     assert settings.jobs_max_receive_count == 3
     assert settings.aws_endpoint_url == "http://localhost:4566"
+    assert settings.notification_email_extra_to == ""
