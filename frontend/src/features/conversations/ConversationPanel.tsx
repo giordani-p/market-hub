@@ -1,3 +1,4 @@
+import { MessageCircle } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Button } from '../../components/ui/Button'
 import { PriorityBadge } from '../../components/ui/PriorityBadge'
@@ -181,7 +182,10 @@ export function ConversationPanel({ itemId, viewerRole }: ConversationPanelProps
   return (
     <div className="conversation-panel">
       <div className="conversation-panel-header">
-        <h2>{PANEL_TITLE[viewerRole]}</h2>
+        <h2>
+          <MessageCircle size={18} aria-hidden="true" />
+          {PANEL_TITLE[viewerRole]}
+        </h2>
         {selected && <PriorityBadge priority={selected.effective_priority} />}
       </div>
 
@@ -227,7 +231,7 @@ export function ConversationPanel({ itemId, viewerRole }: ConversationPanelProps
                 {sending ? 'Enviando...' : 'Enviar'}
               </Button>
               {canClose && (
-                <Button type="button" variant="secondary" onClick={handleClose} disabled={closing}>
+                <Button type="button" variant="destructive" onClick={handleClose} disabled={closing}>
                   {closing ? 'Encerrando...' : 'Encerrar conversa'}
                 </Button>
               )}

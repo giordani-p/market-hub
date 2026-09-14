@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
+import { Bell } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../../components/ui/Button'
 import { EmptyState } from '../../components/feedback/EmptyState'
@@ -16,12 +17,14 @@ import {
   markAllNotificationsRead,
   markNotificationRead,
 } from './api'
+import { buildNotificationCopy } from './copy'
 import { resolveNotificationRoute } from './resolveRoute'
 
 const PAGE_SIZE = 10
 
 export function NotificationBell({ role }: { role: UserRole }) {
   const navigate = useNavigate()
+  const containerRef = useRef<HTMLDivElement>(null)
   const [unreadCount, setUnreadCount] = useState(0)
   const [open, setOpen] = useState(false)
 
@@ -43,6 +46,29 @@ export function NotificationBell({ role }: { role: UserRole }) {
   useEffect(() => {
     loadUnreadCount()
   }, [loadUnreadCount])
+
+  // Fecha ao clicar fora ou apertar Escape -- padrao esperado de um dropdown.
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+    function handlePointerDown(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setOpen(false)
+      }
+    }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [open])
 
   const loadNotifications = useCallback((targetPage: number) => {
     setLoading(true)
@@ -72,7 +98,9 @@ export function NotificationBell({ role }: { role: UserRole }) {
     try {
       await markAllNotificationsRead()
       setUnreadCount(0)
-      setNotifications((prev) => prev?.map((n) => ({ ...n, read_at: n.read_at ?? new Date().toISOString() })) ?? null)
+      setNotifications(
+        (prev) => prev?.map((n) => ({ ...n, read_at: n.read_at ?? new Date().toISOString() })) ?? null,
+      )
     } catch {
       // botao continua disponivel para nova tentativa; nao trava o dropdown.
     } finally {
@@ -82,8 +110,11 @@ export function NotificationBell({ role }: { role: UserRole }) {
 
   async function handleSelect(notification: AppNotification) {
     if (!notification.read_at) {
-      setNotifications((prev) =>
-        prev?.map((n) => (n.id === notification.id ? { ...n, read_at: new Date().toISOString() } : n)) ?? null,
+      setNotifications(
+        (prev) =>
+          prev?.map((n) =>
+            n.id === notification.id ? { ...n, read_at: new Date().toISOString() } : n,
+          ) ?? null,
       )
       setUnreadCount((count) => Math.max(0, count - 1))
       markNotificationRead(notification.id).catch(() => {
@@ -105,7 +136,7 @@ export function NotificationBell({ role }: { role: UserRole }) {
   const hasOlder = notifications !== null && notifications.length < total
 
   return (
-    <div className="notification-bell">
+    <div className="notification-bell" ref={containerRef}>
       <button
         type="button"
         className="notification-trigger"
@@ -113,7 +144,7 @@ export function NotificationBell({ role }: { role: UserRole }) {
         aria-label={unreadCount > 0 ? `${unreadCount} notificações não lidas` : 'Notificações'}
         aria-expanded={open}
       >
-        <span aria-hidden="true">🔔</span>
+        <Bell size={20} aria-hidden="true" />
         {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
       </button>
 
@@ -141,21 +172,24 @@ export function NotificationBell({ role }: { role: UserRole }) {
 
           {notifications !== null && notifications.length > 0 && (
             <ul className="notification-list">
-              {notifications.map((notification) => (
-                <li key={notification.id}>
-                  <button
-                    type="button"
-                    className={`notification-item${notification.read_at ? '' : ' notification-item-unread'}`}
-                    onClick={() => handleSelect(notification)}
-                  >
-                    <span className="notification-item-title">{notification.title}</span>
-                    <span className="notification-item-message">{notification.message}</span>
-                    <span className="notification-item-time">
-                      {formatDateTime(notification.created_at)}
-                    </span>
-                  </button>
-                </li>
-              ))}
+              {notifications.map((notification) => {
+                const copy = buildNotificationCopy(notification)
+                return (
+                  <li key={notification.id}>
+                    <button
+                      type="button"
+                      className={`notification-item${notification.read_at ? '' : ' notification-item-unread'}`}
+                      onClick={() => handleSelect(notification)}
+                    >
+                      <span className="notification-item-title">{copy.title}</span>
+                      <span className="notification-item-message">{copy.message}</span>
+                      <span className="notification-item-time">
+                        {formatDateTime(notification.created_at)}
+                      </span>
+                    </button>
+                  </li>
+                )
+              })}
             </ul>
           )}
 

@@ -42,8 +42,8 @@ function notification(overrides: Partial<AppNotification> = {}): AppNotification
     id: 'notif-1',
     recipient_id: 'user-1',
     type: 'ORDER_ITEM_STATUS_CHANGED',
-    title: 'Order item status updated',
-    message: 'Status changed from placed to preparing.',
+    title: 'raw english title (never shown)',
+    message: 'raw english message (never shown)',
     entity_type: 'ORDER_ITEM',
     entity_id: 'item-1',
     metadata: { previous_status: 'placed', new_status: 'preparing' },
@@ -79,7 +79,7 @@ describe('NotificationBell', () => {
     expect(await screen.findByText('3')).toBeInTheDocument()
   })
 
-  it('lists notifications when opened', async () => {
+  it('lists notifications with the PT-BR copy, never the raw backend text', async () => {
     fetchUnreadCount.mockResolvedValue({ unread_count: 1 })
     fetchNotifications.mockResolvedValue(listResponse())
     render(
@@ -92,8 +92,9 @@ describe('NotificationBell', () => {
 
     await user.click(screen.getByRole('button', { name: /notificaç/i }))
 
-    expect(await screen.findByText('Order item status updated')).toBeInTheDocument()
-    expect(screen.getByText('Status changed from placed to preparing.')).toBeInTheDocument()
+    expect(await screen.findByText('Status do pedido atualizado')).toBeInTheDocument()
+    expect(screen.getByText('Seu pedido agora está "Em preparação".')).toBeInTheDocument()
+    expect(screen.queryByText('raw english title (never shown)')).not.toBeInTheDocument()
   })
 
   it('shows the empty state when there are no notifications', async () => {
@@ -123,7 +124,7 @@ describe('NotificationBell', () => {
     await screen.findByText('2')
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: /notificaç/i }))
-    await screen.findByText('Order item status updated')
+    await screen.findByText('Status do pedido atualizado')
 
     await user.click(screen.getByRole('button', { name: 'Marcar todas como lidas' }))
 
@@ -143,9 +144,9 @@ describe('NotificationBell', () => {
     await screen.findByText('1')
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: /notificaç/i }))
-    await screen.findByText('Order item status updated')
+    await screen.findByText('Status do pedido atualizado')
 
-    await user.click(screen.getByText('Order item status updated'))
+    await user.click(screen.getByText('Status do pedido atualizado'))
 
     expect(markNotificationRead).toHaveBeenCalledWith('notif-1')
     await waitFor(() => expect(navigate).toHaveBeenCalledWith('/seller/orders/item-1'))
@@ -166,13 +167,31 @@ describe('NotificationBell', () => {
     await screen.findByText('1')
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: /notificaç/i }))
-    await screen.findByText('Order item status updated')
+    await screen.findByText('Status do pedido atualizado')
 
-    await user.click(screen.getByText('Order item status updated'))
+    await user.click(screen.getByText('Status do pedido atualizado'))
 
     expect(fetchOrderItemRouteContext).toHaveBeenCalledWith('item-1')
     await waitFor(() =>
       expect(navigate).toHaveBeenCalledWith('/buyer/orders/order-1/items/item-1'),
     )
+  })
+
+  it('closes the dropdown when Escape is pressed', async () => {
+    fetchUnreadCount.mockResolvedValue({ unread_count: 1 })
+    fetchNotifications.mockResolvedValue(listResponse())
+    render(
+      <MemoryRouter>
+        <NotificationBell role="seller" />
+      </MemoryRouter>,
+    )
+    await screen.findByText('1')
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /notificaç/i }))
+    await screen.findByText('Status do pedido atualizado')
+
+    await user.keyboard('{Escape}')
+
+    expect(screen.queryByText('Status do pedido atualizado')).not.toBeInTheDocument()
   })
 })
