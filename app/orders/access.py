@@ -83,3 +83,19 @@ def load_seller_item_context(
     if row is None:
         raise ResourceNotFoundError("Order item not found")
     return row[0], row[1], row[2], row[3]
+
+
+def load_buyer_item_context(
+    session: Session, item_id: UUID, buyer_id: UUID
+) -> tuple[OrderItem, Product, Order]:
+    """Item do proprio Buyer, com produto e pedido -- o buyer ja e o CurrentUser."""
+    row = session.execute(
+        select(OrderItem, Product, Order)
+        .join(Offer, OrderItem.offer_id == Offer.id)
+        .join(Product, Offer.product_id == Product.id)
+        .join(Order, OrderItem.order_id == Order.id)
+        .where(OrderItem.id == item_id, Order.buyer_id == buyer_id)
+    ).one_or_none()
+    if row is None:
+        raise ResourceNotFoundError("Order item not found")
+    return row[0], row[1], row[2]

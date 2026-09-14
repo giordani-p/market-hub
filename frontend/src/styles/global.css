@@ -100,9 +100,124 @@ body {
   gap: 0.75rem;
 }
 
-.app-notifications {
-  opacity: 0.4;
-  cursor: not-allowed;
+/* Notifications: sino discreto no header, contagem so aparece quando > 0. */
+.notification-bell {
+  position: relative;
+}
+
+.notification-trigger {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1.1rem;
+}
+
+.notification-trigger:hover {
+  background: color-mix(in srgb, var(--color-muted) 12%, transparent);
+}
+
+.notification-badge {
+  position: absolute;
+  top: -0.2rem;
+  right: -0.2rem;
+  min-width: 1.1rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--color-danger);
+  color: var(--color-primary-fg);
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1.1rem;
+  text-align: center;
+}
+
+.notification-dropdown {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  width: 340px;
+  max-width: calc(100vw - 2rem);
+  max-height: 420px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px color-mix(in srgb, black 16%, transparent);
+  z-index: 20;
+}
+
+.notification-dropdown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.notification-dropdown-header h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.notification-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.notification-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  width: 100%;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.notification-item:hover {
+  border-color: var(--color-primary);
+}
+
+.notification-item-unread {
+  border-left: 3px solid var(--color-primary);
+}
+
+.notification-item-title {
+  font-weight: 600;
+}
+
+.notification-item-unread .notification-item-title {
+  font-weight: 700;
+}
+
+.notification-item-message {
+  color: var(--color-muted);
+  font-size: 0.9rem;
+}
+
+.notification-item-time {
+  color: var(--color-muted);
+  font-size: 0.75rem;
 }
 
 .app-body {

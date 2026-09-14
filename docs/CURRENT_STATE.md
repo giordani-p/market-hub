@@ -1,8 +1,8 @@
 # Estado atual do projeto
 
 - **Versao**: 0.8.0
-- **Fase**: Frontend F.3 — COMPLETE (Order Item + Communication)
-- **Commit de referencia**: 06cd1fd
+- **Fase**: Frontend F.4 — COMPLETE (Ops Experience)
+- **Commit de referencia**: 5b47254
 - **Repositório**: https://github.com/giordani-p/market-hub
 
 ## Do que se trata
@@ -97,7 +97,7 @@ Rotas implementadas, todas sob o prefixo `/v1`:
 | `GET /v1/orders`                                                | orders do buyer autenticado, items com produto (`BuyerOrderItem`)  |
 | `GET /v1/orders/{order_id}`                                     | `Order` do buyer autenticado, items com produto (`BuyerOrderItem`) |
 | `GET /v1/order-items`                                           | envelope paginado dos items do seller autenticado                  |
-| `GET /v1/order-items/{item_id}`                                 | detalhe do seller (`product`, `buyer`, `order`, `offer_id`)        |
+| `GET /v1/order-items/{item_id}`                                 | detalhe do buyer ou do seller do item (`product`, `buyer`, `order`, `offer_id`) |
 | `PATCH /v1/order-items/{item_id}`                               | avanca status no fluxo; mesmo status e idempotente                 |
 | `POST /v1/order-items/{item_id}/cancel`                         | cancela conforme o papel; cancel repetido e idempotente            |
 | `POST /v1/order-items/{item_id}/internal-comments`              | `201` InternalComment do Seller no proprio item                    |
@@ -143,8 +143,12 @@ Erros de negocio respondem com `ErrorResponse` (`code`, `message`):
 `unauthorized` (401), `forbidden` (403). Checkout invalido responde
 `CheckoutRejected` (`code: checkout_rejected`, `items` com `reason`).
 
-Seller em item de outro Seller recebe `404 resource_not_found`. Buyer nas
-rotas de listagem/detalhe do Seller recebe `403`. Sem token, `401`. Participante
+Seller em item de outro Seller recebe `404 resource_not_found`. Buyer na
+listagem do Seller (`GET /v1/order-items`) recebe `403`; no detalhe
+(`GET /v1/order-items/{item_id}`) do proprio item recebe `200` (desde o F5
+do frontend, pro deep link de Notification resolver o `order_id`), de item
+de outro buyer recebe `404`, e Ops nessa mesma rota recebe `403`. Sem
+token, `401`. Participante
 sem relacao com Conversation ou Order Item recebe `404`. Buyer em
 `POST .../close` recebe `403`. Buyer e Seller em `/v1/ops/*` recebem `403`.
 Ops nas rotas exclusivas de Seller/Buyer recebe `403`; em Conversation/Message
@@ -187,29 +191,27 @@ Fases concluidas e validadas manualmente pelo usuario:
   `/buyer/orders/:orderId/items/:itemId` (o item vem de dentro de
   `GET /orders/{orderId}`, ja que nao existe `GET /order-items/{id}` para
   Buyer) e `ConversationPanel` generico o bastante para os dois papeis.
-
-**F4 (Ops Experience)** implementado (2026-09-14), **aguardando validacao
-manual do usuario no browser** antes de contar como fase fechada:
-`OpsQueuePage` (`/ops`, fila de Conversations `open` por prioridade
-efetiva, filtros de `seller_id`/`order_item_id`/`effective_priority`) e
-`OpsConversationDetailPage` (`/ops/conversations/:id`, contexto do Order
-Item + `PriorityActions` — recalcular, marcar/remover `critical` — +
-`InternalCommentsPanel` reaproveitado). Decisao registrada em
-`docs/FRONTEND_F4_SPEC.md`: sem historico de Messages para Ops (backend nao
-permite, por privacidade). Testando o F4, o usuario pediu mais uma coisa:
-o Seller tambem precisa ver a prioridade da propria Conversation — gap real
-de contrato (nao so de UI), resolvido com `effective_priority` em
-`ConversationResponse` (ver `## Contratos de API` e `Historico de
-versoes`); `ConversationPanel` (Buyer e Seller) mostra isso via
-`PriorityBadge`, agora em `components/ui/` por ser reaproveitado entre
-`features/conversations` e `features/ops`.
+- **F4 (Ops Experience)**: `OpsQueuePage` (`/ops`, fila de Conversations
+  `open` por prioridade efetiva, filtros de
+  `seller_id`/`order_item_id`/`effective_priority`) e
+  `OpsConversationDetailPage` (`/ops/conversations/:id`, contexto do Order
+  Item + `PriorityActions` — recalcular, marcar/remover `critical` — +
+  `InternalCommentsPanel` reaproveitado). Decisao registrada em
+  `docs/FRONTEND_F4_SPEC.md`: sem historico de Messages para Ops (backend
+  nao permite, por privacidade). Testando o F4, o usuario pediu mais uma
+  coisa: o Seller tambem precisa ver a prioridade da propria Conversation —
+  gap real de contrato (nao so de UI), resolvido com `effective_priority`
+  em `ConversationResponse` (ver `## Contratos de API` e `Historico de
+  versoes`); `ConversationPanel` (Buyer e Seller) mostra isso via
+  `PriorityBadge`, agora em `components/ui/` por ser reaproveitado entre
+  `features/conversations` e `features/ops`.
 
 Gaps reais de contrato encontrados e resolvidos ate aqui: CORS ausente
 (F0), `BuyerOrderItem` sem produto em `GET /v1/orders` (F1) e
 `effective_priority` ausente em `ConversationResponse` (F4).
 
 Ainda nao existe: UI de Notifications (F5) e o polish/responsividade final
-(F6). Ver `docs/FRONTEND_F4_SPEC.md` para o detalhe da ultima fase.
+(F6). Ver `docs/FRONTEND_F4_SPEC.md` para o detalhe da ultima fase fechada.
 
 ## Decisoes de contrato e de stack ja tomadas
 
@@ -217,6 +219,11 @@ Ainda nao existe: UI de Notifications (F5) e o polish/responsividade final
   O `OrderItem` generico (resposta de `PATCH`/`cancel` de Order Item) continua sem
   produto: e um schema a parte, nao o mesmo reaproveitado.
 - Atualizacao apenas por `PATCH`, com todos os campos opcionais. Nao ha `PUT`.
+- `GET /v1/order-items/{item_id}` aceita Buyer e Seller (desde o F5 do
+  frontend). Buyer so acessa o proprio item (`Order.buyer_id`), so leitura
+  (sem `PATCH`/`cancel` por essa rota generica -- cancelamento do Buyer
+  continua so em `POST .../cancel`); Seller mantem o escopo por `seller_id`
+  de sempre. A listagem (`GET /v1/order-items`) continua exclusiva do Seller.
 - Ofertas de um vendedor por filtro na listagem publica: `GET /v1/offers?seller_id=`.
 - Preco como string decimal com duas casas (`"299.00"`), mapeado para `Decimal`
   e `NUMERIC(12,2)`.
@@ -321,14 +328,21 @@ Postgres no ar e nao sobe LocalStack.
 
 ## Proxima etapa
 
-Validacao manual do usuario no browser do F4 (`docs/FRONTEND_F4_SPEC.md`),
-logado como Ops e como Seller (a mudanca de `effective_priority` afeta os
-dois). So depois disso o F4 fecha e a fase muda pra Frontend F5 —
-Notifications. SLA e transcript Ops no backend continuam sem
+Frontend F5 — Notifications (`docs/FRONTEND_F5_SPEC.md`, a ser criada),
+sobre a base entregue no F4. SLA e transcript Ops no backend continuam sem
 especificacao.
 
 ## Historico de versoes
 
+- **0.8.0** — `GET /v1/order-items/{item_id}` passou a aceitar Buyer (so
+  leitura do proprio item), nao so Seller (`api/openapi.yaml`,
+  `app/orders/access.py`/`routes.py`), gap real achado revisando o contrato
+  do F5 do frontend: o deep link de Notification (`entity_type=ORDER_ITEM`)
+  so tem o `item_id`, e a rota do Buyer (`/buyer/orders/:orderId/items/:itemId`)
+  precisa do `order_id`, que agora vem em `OrderItemDetail.order.id`.
+- **0.8.0** — F4 (Ops Experience) validado manualmente pelo usuario (Ops e
+  Seller, incluindo o `effective_priority` novo) e mergeado na main (PR #13,
+  commit `5b47254`).
 - **0.8.0** — `ConversationResponse` (Buyer/Seller) ganhou `effective_priority`
   (`api/openapi.yaml`, `app/communication/schemas.py`/`routes.py`), pedido
   pelo usuario testando o F4 do frontend: Seller precisava ver a prioridade

@@ -17,6 +17,7 @@ from app.core.events import OrderItemCancelled, OrderItemStatusChanged, record_e
 from app.database import get_session
 from app.orders.access import (
     load_buyer_item,
+    load_buyer_item_context,
     load_seller_item,
     load_seller_item_context,
     seller_list_statement,
@@ -225,12 +226,20 @@ def list_order_items(
 @items_router.get(
     "/order-items/{item_id}",
     response_model=OrderItemDetail,
-    summary="Get an order item of the authenticated seller",
+    summary="Get an order item of the authenticated buyer or seller",
 )
-def get_order_item(item_id: UUID, seller: SellerUser, session: SessionDep) -> OrderItemDetail:
-    assert seller.seller_id is not None
-    item, product, order, buyer = load_seller_item_context(session, item_id, seller.seller_id)
-    return _detail(item, product, order, buyer)
+def get_order_item(item_id: UUID, user: CurrentUser, session: SessionDep) -> OrderItemDetail:
+    """Usado tambem pelo deep link de Notification (`entity_type=ORDER_ITEM`):
+    o Buyer so tem `entity_id` (o item), e precisa do `order_id` daqui pra
+    montar a rota `/buyer/orders/{order_id}/items/{item_id}`.
+    """
+    if user.role == UserRole.SELLER and user.seller_id is not None:
+        item, product, order, buyer = load_seller_item_context(session, item_id, user.seller_id)
+        return _detail(item, product, order, buyer)
+    if user.role == UserRole.BUYER:
+        item, product, order = load_buyer_item_context(session, item_id, user.id)
+        return _detail(item, product, order, user)
+    raise ForbiddenError("Cannot access order item")
 
 
 @items_router.patch(
