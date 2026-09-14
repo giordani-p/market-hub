@@ -174,6 +174,19 @@ def list_open_queue(
     )
 
 
+def preview_open_queue(session: Session, *, limit: int = 5) -> list[OpsConversationQueueItem]:
+    """Primeiros itens da fila OPEN, na mesma ordem da listagem Ops."""
+    rows = session.execute(
+        _queue_statement()
+        .order_by(PriorityRank, Conversation.last_interaction_at.desc())
+        .limit(limit)
+    ).all()
+    return [
+        _queue_item(conversation, item, product, order, buyer, seller)
+        for conversation, item, product, order, buyer, seller in rows
+    ]
+
+
 def _queue_item(
     conversation: Conversation,
     item: OrderItem,
