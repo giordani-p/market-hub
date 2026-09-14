@@ -1,6 +1,8 @@
 import { MessageCircle } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Button } from '../../components/ui/Button'
+import { SelectField } from '../../components/ui/SelectField'
+import { FormError } from '../../components/feedback/FormError'
 import { PriorityBadge } from '../../components/ui/PriorityBadge'
 import { EmptyState } from '../../components/feedback/EmptyState'
 import { ErrorState } from '../../components/feedback/ErrorState'
@@ -16,19 +18,25 @@ import {
   sendMessage,
 } from './api'
 import { CONVERSATION_REASON_LABELS, CONVERSATION_REASONS } from './reasons'
+import styles from './ConversationPanel.module.css'
 
 type ViewerRole = 'buyer' | 'seller'
 
 function MessageBubble({ message, viewerRole }: { message: Message; viewerRole: ViewerRole }) {
   if (message.author_type === 'system') {
-    return <p className="message-system">{message.content}</p>
+    return <p className={styles.system}>{message.content}</p>
   }
   const mine = message.author_type === viewerRole
+  // data-author diz de quem e a bolha sem depender da classe de estilo --
+  // e o que o teste consulta, e o que descreve a intencao.
   return (
-    <div className={`message-row ${mine ? 'message-row-mine' : 'message-row-theirs'}`}>
-      <div className={`message-bubble ${mine ? 'message-bubble-mine' : 'message-bubble-theirs'}`}>
+    <div
+      className={`${styles.row} ${mine ? styles.rowMine : styles.rowTheirs}`}
+      data-author={mine ? 'mine' : 'theirs'}
+    >
+      <div className={`${styles.bubble} ${mine ? styles.bubbleMine : styles.bubbleTheirs}`}>
         <p>{message.content}</p>
-        <span className="message-time">{formatTime(message.created_at)}</span>
+        <span className={styles.time}>{formatTime(message.created_at)}</span>
       </div>
     </div>
   )
@@ -151,28 +159,20 @@ export function ConversationPanel({ itemId, viewerRole }: ConversationPanelProps
   }
 
   const openForm = (
-    <div className="open-conversation-form">
-      <label className="field">
-        <span>Motivo</span>
-        <select
-          className="input"
-          value={reason}
-          onChange={(event) => setReason(event.target.value as ConversationReason)}
-        >
-          {CONVERSATION_REASONS.map((value) => (
-            <option key={value} value={value}>
-              {CONVERSATION_REASON_LABELS[value]}
-            </option>
-          ))}
-        </select>
-      </label>
-      {openError && (
-        <p className="field-error" role="alert">
-          {openError}
-        </p>
-      )}
-      <Button type="button" onClick={handleOpenConversation} disabled={opening}>
-        {opening ? 'Abrindo...' : 'Iniciar conversa'}
+    <div className={styles.openForm}>
+      <SelectField
+        label="Motivo"
+        name="reason"
+        value={reason}
+        onChange={(event) => setReason(event.target.value as ConversationReason)}
+        options={CONVERSATION_REASONS.map((value) => ({
+          value,
+          label: CONVERSATION_REASON_LABELS[value],
+        }))}
+      />
+      <FormError message={openError} />
+      <Button type="button" onClick={handleOpenConversation} loading={opening}>
+        Iniciar conversa
       </Button>
     </div>
   )
@@ -180,9 +180,9 @@ export function ConversationPanel({ itemId, viewerRole }: ConversationPanelProps
   const canClose = viewerRole === 'seller'
 
   return (
-    <div className="conversation-panel">
-      <div className="conversation-panel-header">
-        <h2>
+    <div className={styles.panel}>
+      <div className={styles.header}>
+        <h2 className={styles.title}>
           <MessageCircle size={18} aria-hidden="true" />
           {PANEL_TITLE[viewerRole]}
         </h2>
@@ -190,63 +190,60 @@ export function ConversationPanel({ itemId, viewerRole }: ConversationPanelProps
       </div>
 
       {!selected && (
-        <div className="conversation-empty">
+        <div className={styles.empty}>
           <EmptyState title="Nenhuma conversa neste pedido ainda." />
           {openForm}
         </div>
       )}
 
       {selected && (
-        <div className="thread">
+        <div className={styles.thread}>
           {hasOlder && (
             <Button
               type="button"
               variant="secondary"
               onClick={() => loadMessages(selected.id, messages[0]?.created_at)}
-              disabled={loadingMessages}
+              loading={loadingMessages}
             >
-              {loadingMessages ? 'Carregando...' : 'Carregar mais antigas'}
+              Carregar mais antigas
             </Button>
           )}
           {messagesError && (
             <ErrorState message={messagesError} onRetry={() => loadMessages(selected.id)} />
           )}
 
-          <div className="thread-messages">
+          <div className={styles.messages}>
             {messages.map((message) => (
               <MessageBubble key={message.id} message={message} viewerRole={viewerRole} />
             ))}
           </div>
 
           {selected.status === 'open' ? (
-            <div className="thread-composer">
+            <div className={styles.composer}>
               <input
-                className="input"
+                className={styles.composerInput}
+                aria-label="Escrever mensagem"
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
                 placeholder="Escrever mensagem..."
                 maxLength={2000}
               />
-              <Button type="button" onClick={handleSend} disabled={sending || !draft.trim()}>
-                {sending ? 'Enviando...' : 'Enviar'}
+              <Button type="button" onClick={handleSend} loading={sending} disabled={!draft.trim()}>
+                Enviar
               </Button>
               {canClose && (
-                <Button type="button" variant="destructive" onClick={handleClose} disabled={closing}>
-                  {closing ? 'Encerrando...' : 'Encerrar conversa'}
+                <Button type="button" variant="secondary" onClick={handleClose} loading={closing}>
+                  Encerrar conversa
                 </Button>
               )}
             </div>
           ) : (
-            <div className="conversation-closed">
+            <div className={styles.closed}>
               <p className="text-muted">Esta conversa está encerrada.</p>
               {openForm}
             </div>
           )}
-          {sendError && (
-            <p className="field-error" role="alert">
-              {sendError}
-            </p>
-          )}
+          <FormError message={sendError} />
         </div>
       )}
     </div>

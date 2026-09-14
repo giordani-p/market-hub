@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Button } from '../../components/ui/Button'
+import { TextField } from '../../components/ui/TextField'
 import { EmptyState } from '../../components/feedback/EmptyState'
 import { checkoutRejectReasonLabel } from '../orders/checkoutErrors'
 import { createOrder } from '../orders/api'
@@ -8,6 +9,7 @@ import { errorMessage } from '../../lib/utils/errorMessage'
 import { formatCurrencyBRL } from '../../lib/utils/format'
 import type { Offer } from '../../types/catalog'
 import type { CheckoutRejectedBody, Order } from '../../types/order'
+import styles from './PurchasePanel.module.css'
 
 interface PurchasePanelProps {
   offers: Offer[]
@@ -84,45 +86,58 @@ export function PurchasePanel({ offers, onPurchased }: PurchasePanelProps) {
     }
   }
 
+  const total = selectedOffer ? Number(selectedOffer.price) * quantity : 0
+
   return (
-    <div className="purchase-panel">
-      <h2>Ofertas disponíveis</h2>
-      <ul className="offer-list">
-        {availableOffers.map((offer) => (
-          <li key={offer.id}>
-            <label className="offer-option">
-              <input
-                type="radio"
-                name="offer"
-                checked={selectedOfferId === offer.id}
-                onChange={() => selectOffer(offer)}
-              />
-              <span>{formatCurrencyBRL(offer.price)}</span>
-              <span className="text-muted">{offer.stock} em estoque</span>
-            </label>
-          </li>
-        ))}
+    <div className={styles.panel}>
+      <ul className={styles.offerList}>
+        {availableOffers.map((offer) => {
+          const selected = selectedOfferId === offer.id
+          return (
+            <li key={offer.id}>
+              <label
+                className={`${styles.offerOption} ${selected ? styles.offerOptionSelected : ''}`.trim()}
+              >
+                <input
+                  type="radio"
+                  name="offer"
+                  checked={selected}
+                  onChange={() => selectOffer(offer)}
+                />
+                <span className={styles.offerPrice}>{formatCurrencyBRL(offer.price)}</span>
+                <span className={styles.offerStock}>{offer.stock} em estoque</span>
+              </label>
+            </li>
+          )
+        })}
       </ul>
 
       {selectedOffer && (
-        <div className="purchase-form">
-          <label htmlFor="quantity">Quantidade</label>
-          <input
-            id="quantity"
-            className="input"
+        <div className={styles.form}>
+          <TextField
+            label="Quantidade"
+            name="quantity"
             type="number"
             min={1}
             max={selectedOffer.stock}
             value={quantity}
             onChange={(event) => updateQuantity(Number(event.target.value))}
+            fieldClassName={styles.quantity}
           />
+
+          <div className={styles.total}>
+            <span className={styles.totalLabel}>Total</span>
+            <span className={styles.totalValue}>{formatCurrencyBRL(String(total))}</span>
+          </div>
+
           {error && (
-            <p className="field-error" role="alert">
+            <p className={styles.error} role="alert">
               {error}
             </p>
           )}
-          <Button type="button" onClick={handleBuy} disabled={submitting}>
-            {submitting ? 'Comprando...' : 'Comprar'}
+
+          <Button type="button" onClick={handleBuy} loading={submitting} fullWidth>
+            Comprar
           </Button>
         </div>
       )}

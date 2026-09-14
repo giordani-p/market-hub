@@ -1,0 +1,62 @@
+/*
+ * Base visual compartilhada por StatusBadge e PriorityBadge. Os dois
+ * continuam distintos em vocabulario e cor -- prioridade nao e status de
+ * pedido -- mas a caixa, o raio e a metrica sao os mesmos.
+ */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-tight);
+  white-space: nowrap;
+}
+
+.dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.neutral {
+  background: color-mix(in srgb, var(--color-muted) 20%, transparent);
+  color: var(--color-fg);
+}
+
+.muted {
+  background: color-mix(in srgb, var(--color-muted) 20%, transparent);
+  color: var(--color-muted);
+}
+
+.info {
+  background: color-mix(in srgb, var(--color-primary) 16%, transparent);
+  color: var(--color-primary);
+}
+
+.success {
+  background: color-mix(in srgb, var(--color-success) 20%, transparent);
+  color: var(--color-success);
+}
+
+.danger {
+  background: color-mix(in srgb, var(--color-danger) 20%, transparent);
+  color: var(--color-danger);
+}
+
+.warning {
+  background: color-mix(in srgb, var(--color-warning) 18%, transparent);
+  color: var(--color-warning);
+}
+
+/* Preenchimento solido: reservado ao nivel que precisa de destaque forte.
+   Usa --color-danger-solid porque o vermelho puro com texto branco fica
+   abaixo do contraste AA. */
+.dangerSolid {
+  background: var(--color-danger-solid);
+  color: var(--color-primary-fg);
+}

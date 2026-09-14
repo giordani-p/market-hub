@@ -1,0 +1,27 @@
+.wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.bubble {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + var(--space-2));
+  transform: translateX(-50%);
+  z-index: 40;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-fg);
+  color: var(--color-primary-fg);
+  font-size: var(--font-size-caption);
+  white-space: nowrap;
+  box-shadow: var(--shadow-dropdown);
+  pointer-events: none;
+}
+
+.right {
+  left: calc(100% + var(--space-2));
+  bottom: auto;
+  top: 50%;
+  transform: translateY(-50%);
+}

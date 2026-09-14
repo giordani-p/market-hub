@@ -1,10 +1,24 @@
-import { Link, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { Card } from '../../components/ui/Card'
 import { PriorityBadge } from '../../components/ui/PriorityBadge'
 import { StatusBadge } from '../../components/ui/StatusBadge'
+import { Tag } from '../../components/ui/Tag'
+import { DetailList } from '../../components/data/DetailList'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
+  TableRowLink,
+} from '../../components/data/Table'
 import { EmptyState } from '../../components/feedback/EmptyState'
 import { ErrorState } from '../../components/feedback/ErrorState'
 import { Spinner } from '../../components/feedback/Spinner'
+import { Page } from '../../components/layout/Page'
+import { PageHeader } from '../../components/layout/PageHeader'
+import { Section } from '../../components/layout/Section'
 import { InternalCommentsPanel } from '../support/InternalCommentsPanel'
 import { CONVERSATION_REASON_LABELS } from '../conversations/reasons'
 import { formatCurrencyBRL, formatDate, formatDateTime } from '../../lib/utils/format'
@@ -33,70 +47,76 @@ export function OpsOrderItemDetailPage() {
   const { item, conversations } = state.data
 
   return (
-    <div className="page page-wide">
-      <div className="item-detail-header">
-        <h1>{item.product.name}</h1>
-        <StatusBadge status={item.status} />
-      </div>
-      {item.product.description && <p className="text-muted">{item.product.description}</p>}
+    <Page width="wide">
+      <PageHeader
+        title={item.product.name}
+        subtitle={item.product.description ?? undefined}
+        meta={<StatusBadge status={item.status} />}
+        breadcrumbs={[{ label: 'Pedidos', to: '/ops/order-items' }, { label: item.product.name }]}
+      />
 
       <Card>
-        <dl className="detail-list">
-          <dt>Seller</dt>
-          <dd>{item.seller.name}</dd>
-
-          <dt>Buyer</dt>
-          <dd>{item.buyer.name}</dd>
-
-          <dt>Quantidade</dt>
-          <dd>{item.quantity}</dd>
-
-          <dt>Preço</dt>
-          <dd>{formatCurrencyBRL(item.purchase_price)}</dd>
-
-          <dt>Pedido</dt>
-          <dd>
-            #{item.order.id.slice(0, 8)} — {formatDate(item.order.created_at)}
-          </dd>
-        </dl>
+        <DetailList
+          entries={[
+            { term: 'Vendedor', value: item.seller.name },
+            { term: 'Comprador', value: item.buyer.name },
+            { term: 'Quantidade', value: item.quantity },
+            { term: 'Preço', value: formatCurrencyBRL(item.purchase_price) },
+            {
+              term: 'Pedido',
+              value: `#${item.order.id.slice(0, 8)} — ${formatDate(item.order.created_at)}`,
+            },
+          ]}
+        />
       </Card>
 
-      <section className="dashboard-section">
-        <h2>Conversas</h2>
-        <p className="text-muted">Conteúdo da conversa com o Buyer não é visível para Ops.</p>
+      <Section
+        title="Conversas"
+        description="Conteúdo da conversa com o Buyer não é visível para Ops."
+      >
         {conversations.length === 0 ? (
           <EmptyState title="Nenhuma conversa neste item." />
         ) : (
-          <div className="order-list">
-            {conversations.map((conversation) => {
-              const reasonLabel =
-                CONVERSATION_REASON_LABELS[conversation.reason as ConversationReason]
-              return (
-                <Link
-                  key={conversation.id}
-                  to={`/ops/conversations/${conversation.id}`}
-                  className="product-link"
-                >
-                  <Card>
-                    <div className="order-item-row">
-                      <span>{reasonLabel ?? conversation.reason}</span>
-                      <span className="text-muted">
+          <Table caption="Conversas abertas e encerradas deste item">
+            <TableHead>
+              <TableRow>
+                <TableHeaderCell>Motivo</TableHeaderCell>
+                <TableHeaderCell>Situação</TableHeaderCell>
+                <TableHeaderCell>Prioridade</TableHeaderCell>
+                <TableHeaderCell>Última interação</TableHeaderCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {conversations.map((conversation) => {
+                const reasonLabel =
+                  CONVERSATION_REASON_LABELS[conversation.reason as ConversationReason]
+                return (
+                  <TableRow key={conversation.id} linked>
+                    <TableCell label="Motivo">
+                      <TableRowLink to={`/ops/conversations/${conversation.id}`}>
+                        {reasonLabel ?? conversation.reason}
+                      </TableRowLink>
+                    </TableCell>
+                    <TableCell label="Situação">
+                      <Tag tone={conversation.status === 'open' ? 'info' : 'muted'} dot>
                         {conversation.status === 'open' ? 'Aberta' : 'Encerrada'}
-                      </span>
+                      </Tag>
+                    </TableCell>
+                    <TableCell label="Prioridade">
                       <PriorityBadge priority={conversation.effective_priority} />
-                    </div>
-                    <span className="text-muted">
+                    </TableCell>
+                    <TableCell label="Última interação">
                       {formatDateTime(conversation.last_interaction_at)}
-                    </span>
-                  </Card>
-                </Link>
-              )
-            })}
-          </div>
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
         )}
-      </section>
+      </Section>
 
       <InternalCommentsPanel itemId={item.id} viewerRole="ops" />
-    </div>
+    </Page>
   )
 }

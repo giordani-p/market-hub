@@ -1,9 +1,18 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '../../components/ui/Button'
-import { Input } from '../../components/ui/Input'
+import { Card } from '../../components/ui/Card'
+import { Checkbox } from '../../components/ui/Checkbox'
+import { TextAreaField } from '../../components/ui/TextAreaField'
+import { TextField } from '../../components/ui/TextField'
 import { ErrorState } from '../../components/feedback/ErrorState'
+import { FormError } from '../../components/feedback/FormError'
 import { Spinner } from '../../components/feedback/Spinner'
+import { Page } from '../../components/layout/Page'
+import { PageHeader } from '../../components/layout/PageHeader'
+import { Section } from '../../components/layout/Section'
+import { ConfirmDialog } from '../../components/overlay/ConfirmDialog'
+import { useToast } from '../../components/overlay/toast-context'
 import { useAuth } from '../../app/providers/auth-context'
 import { errorMessage } from '../../lib/utils/errorMessage'
 import { useAsync } from '../../lib/utils/useAsync'
@@ -17,6 +26,7 @@ import {
   updateProduct,
 } from '../catalog/api'
 import { toApiPrice } from './price'
+import styles from './SellerOfferForm.module.css'
 
 export function SellerOfferDetailPage() {
   const { offerId } = useParams<{ offerId: string }>()
@@ -50,6 +60,8 @@ export function SellerOfferDetailPage() {
   )
 }
 
+type PendingDelete = 'offer' | 'product' | null
+
 function SellerOfferEditor({
   offer,
   product,
@@ -60,6 +72,7 @@ function SellerOfferEditor({
   onSaved: () => void
 }) {
   const navigate = useNavigate()
+  const { showToast } = useToast()
   const [price, setPrice] = useState(offer.price)
   const [stock, setStock] = useState(String(offer.stock))
   const [available, setAvailable] = useState(offer.available)
@@ -67,8 +80,7 @@ function SellerOfferEditor({
   const [productDescription, setProductDescription] = useState(product.description ?? '')
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [confirmOfferDelete, setConfirmOfferDelete] = useState(false)
-  const [confirmProductDelete, setConfirmProductDelete] = useState(false)
+  const [confirmingDelete, setConfirmingDelete] = useState<PendingDelete>(null)
 
   async function handleSaveOffer(event: FormEvent) {
     event.preventDefault()
@@ -86,6 +98,7 @@ function SellerOfferEditor({
     setError(null)
     try {
       await updateOffer(offer.id, { price: apiPrice, stock: stockValue, available })
+      showToast({ message: 'Oferta atualizada.' })
       onSaved()
     } catch (err) {
       setError(errorMessage(err))
@@ -103,6 +116,7 @@ function SellerOfferEditor({
         name: productName.trim(),
         description: productDescription.trim() || null,
       })
+      showToast({ message: 'Produto atualizado.' })
       onSaved()
     } catch (err) {
       setError(errorMessage(err))
@@ -111,169 +125,135 @@ function SellerOfferEditor({
     }
   }
 
-  async function handleDeleteOffer() {
-    setPending(true)
-    setError(null)
-    try {
-      await deleteOffer(offer.id)
-      navigate('/seller/offers')
-    } catch (err) {
-      setError(errorMessage(err))
-      setConfirmOfferDelete(false)
-    } finally {
-      setPending(false)
+  async function handleConfirmDelete() {
+    const target = confirmingDelete
+    if (!target) {
+      return
     }
-  }
-
-  async function handleDeleteProduct() {
     setPending(true)
     setError(null)
     try {
-      await deleteProduct(product.id)
+      await (target === 'offer' ? deleteOffer(offer.id) : deleteProduct(product.id))
+      showToast({ message: target === 'offer' ? 'Oferta excluída.' : 'Produto excluído.' })
       navigate('/seller/offers')
     } catch (err) {
       setError(errorMessage(err))
-      setConfirmProductDelete(false)
+      setConfirmingDelete(null)
     } finally {
       setPending(false)
     }
   }
 
   return (
-    <div className="page">
-      <h1>Oferta</h1>
-      {error && (
-        <p className="field-error" role="alert">
-          {error}
-        </p>
-      )}
+    <Page>
+      <PageHeader
+        title={product.name}
+        subtitle="Preço, estoque e dados do produto na vitrine."
+        breadcrumbs={[{ label: 'Minhas ofertas', to: '/seller/offers' }, { label: product.name }]}
+      />
 
-      <form className="form-stack" onSubmit={handleSaveOffer}>
-        <h2>Preço e estoque</h2>
-        <Input
-          label="Preço"
-          name="price"
-          value={price}
-          onChange={(event) => setPrice(event.target.value)}
-          required
-        />
-        <Input
-          label="Estoque"
-          name="stock"
-          type="number"
-          min={0}
-          value={stock}
-          onChange={(event) => setStock(event.target.value)}
-          required
-        />
-        <label className="checkbox-field">
-          <input
-            type="checkbox"
-            name="available"
-            checked={available}
-            onChange={(event) => setAvailable(event.target.checked)}
-          />
-          Disponível para compra
-        </label>
-        <Button type="submit" disabled={pending}>
-          {pending ? 'Salvando...' : 'Salvar oferta'}
-        </Button>
-      </form>
+      <FormError message={error} />
 
-      <form className="form-stack" onSubmit={handleSaveProduct}>
-        <h2>Produto da vitrine</h2>
-        <p className="text-muted">
-          O produto é compartilhado no catálogo. Alterar o nome ou a descrição vale para todas as
-          lojas que o ofertam.
-        </p>
-        <Input
-          label="Nome"
-          name="productName"
-          value={productName}
-          onChange={(event) => setProductName(event.target.value)}
-          required
-          maxLength={200}
-        />
-        <label className="field">
-          <span>Descrição</span>
-          <textarea
-            className="input"
-            name="productDescription"
-            value={productDescription}
-            onChange={(event) => setProductDescription(event.target.value)}
-            maxLength={2000}
-            rows={3}
-          />
-        </label>
-        <Button type="submit" disabled={pending}>
-          {pending ? 'Salvando...' : 'Salvar produto'}
-        </Button>
-      </form>
+      <Card>
+        <Section title="Preço e estoque">
+          <form className={styles.form} onSubmit={handleSaveOffer}>
+            <TextField
+              label="Preço"
+              name="price"
+              value={price}
+              onChange={(event) => setPrice(event.target.value)}
+              hint="Use ponto como separador decimal."
+              required
+            />
+            <TextField
+              label="Estoque"
+              name="stock"
+              type="number"
+              min={0}
+              value={stock}
+              onChange={(event) => setStock(event.target.value)}
+              required
+            />
+            <Checkbox
+              label="Disponível para compra"
+              name="available"
+              checked={available}
+              onChange={(event) => setAvailable(event.target.checked)}
+            />
+            <Button type="submit" loading={pending}>
+              Salvar oferta
+            </Button>
+          </form>
+        </Section>
+      </Card>
 
-      <div className="status-actions">
-        <h2>Excluir</h2>
-        {!confirmOfferDelete ? (
-          <Button
-            type="button"
-            variant="destructive"
-            disabled={pending}
-            onClick={() => setConfirmOfferDelete(true)}
-          >
-            Excluir oferta
-          </Button>
-        ) : (
-          <div className="confirm-inline">
-            <span>Excluir esta oferta?</span>
+      <Card>
+        <Section
+          title="Produto da vitrine"
+          description="O produto é compartilhado no catálogo. Alterar o nome ou a descrição vale para todas as lojas que o ofertam."
+        >
+          <form className={styles.form} onSubmit={handleSaveProduct}>
+            <TextField
+              label="Nome"
+              name="productName"
+              value={productName}
+              onChange={(event) => setProductName(event.target.value)}
+              required
+              maxLength={200}
+            />
+            <TextAreaField
+              label="Descrição"
+              name="productDescription"
+              value={productDescription}
+              onChange={(event) => setProductDescription(event.target.value)}
+              maxLength={2000}
+            />
+            <Button type="submit" loading={pending}>
+              Salvar produto
+            </Button>
+          </form>
+        </Section>
+      </Card>
+
+      <Card>
+        <Section title="Excluir">
+          <div className={styles.danger}>
             <Button
               type="button"
               variant="destructive"
-              onClick={handleDeleteOffer}
               disabled={pending}
+              onClick={() => setConfirmingDelete('offer')}
             >
-              {pending ? 'Excluindo...' : 'Confirmar exclusão'}
+              Excluir oferta
             </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setConfirmOfferDelete(false)}
-              disabled={pending}
-            >
-              Voltar
-            </Button>
-          </div>
-        )}
-
-        {!confirmProductDelete ? (
-          <Button
-            type="button"
-            variant="destructive"
-            disabled={pending}
-            onClick={() => setConfirmProductDelete(true)}
-          >
-            Excluir produto
-          </Button>
-        ) : (
-          <div className="confirm-inline">
-            <span>Excluir o produto da vitrine? Só funciona se não houver ofertas.</span>
             <Button
               type="button"
               variant="destructive"
-              onClick={handleDeleteProduct}
               disabled={pending}
+              onClick={() => setConfirmingDelete('product')}
             >
-              {pending ? 'Excluindo...' : 'Confirmar exclusão'}
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setConfirmProductDelete(false)}
-              disabled={pending}
-            >
-              Voltar
+              Excluir produto
             </Button>
           </div>
-        )}
-      </div>
-    </div>
+        </Section>
+      </Card>
+
+      <ConfirmDialog
+        open={confirmingDelete !== null}
+        title={
+          confirmingDelete === 'product' ? 'Excluir o produto da vitrine?' : 'Excluir esta oferta?'
+        }
+        description={
+          confirmingDelete === 'product'
+            ? 'Só funciona se nenhuma loja tiver oferta ativa para ele.'
+            : 'A oferta sai do catálogo. Pedidos já feitos não são afetados.'
+        }
+        confirmLabel="Confirmar exclusão"
+        destructive
+        pending={pending}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setConfirmingDelete(null)}
+      />
+    </Page>
   )
 }

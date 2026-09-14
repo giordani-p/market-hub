@@ -1,10 +1,15 @@
+import { XCircle } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '../../components/ui/Button'
+import { ConfirmDialog } from '../../components/overlay/ConfirmDialog'
+import { FormError } from '../../components/feedback/FormError'
+import { useToast } from '../../components/overlay/toast-context'
 import { errorMessage } from '../../lib/utils/errorMessage'
 import type { OrderItemStatus } from '../../types/order'
 import { ORDER_ITEM_STATUS_LABELS } from '../orders/status'
 import { advanceOrderItemStatus, cancelOrderItem } from './api'
 import { canCancel, nextStatus, STATUS_SEQUENCE } from './statusFlow'
+import styles from './StatusActions.module.css'
 
 interface StatusActionsProps {
   itemId: string
@@ -13,6 +18,7 @@ interface StatusActionsProps {
 }
 
 export function StatusActions({ itemId, status, onChanged }: StatusActionsProps) {
+  const { showToast } = useToast()
   const [pending, setPending] = useState(false)
   const [confirmingCancel, setConfirmingCancel] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -28,6 +34,7 @@ export function StatusActions({ itemId, status, onChanged }: StatusActionsProps)
     setError(null)
     try {
       await advanceOrderItemStatus(itemId, target)
+      showToast({ message: `Status atualizado para ${ORDER_ITEM_STATUS_LABELS[target]}.` })
       onChanged()
     } catch (err) {
       setError(errorMessage(err))
@@ -42,6 +49,7 @@ export function StatusActions({ itemId, status, onChanged }: StatusActionsProps)
     try {
       await cancelOrderItem(itemId)
       setConfirmingCancel(false)
+      showToast({ message: 'Pedido cancelado.' })
       onChanged()
     } catch (err) {
       setError(errorMessage(err))
@@ -51,42 +59,44 @@ export function StatusActions({ itemId, status, onChanged }: StatusActionsProps)
   }
 
   return (
-    <div className="status-actions">
+    <div className={styles.statusActions}>
       {status === 'cancelled' ? (
-        <span className="status-cancelled-note">Este item foi cancelado.</span>
+        <p className={styles.cancelledNote}>
+          <XCircle size={18} aria-hidden="true" />
+          Este item foi cancelado.
+        </p>
       ) : (
-        <ol className="status-stepper">
-          {STATUS_SEQUENCE.map((step, index) => (
-            <li
-              key={step}
-              className={
-                index < currentIndex
-                  ? 'status-step status-step-done'
-                  : index === currentIndex
-                    ? 'status-step status-step-current'
-                    : 'status-step'
-              }
-            >
-              {ORDER_ITEM_STATUS_LABELS[step]}
-            </li>
-          ))}
+        <ol className={styles.stepper}>
+          {STATUS_SEQUENCE.map((step, index) => {
+            const stepClass =
+              index < currentIndex
+                ? styles.stepDone
+                : index === currentIndex
+                  ? styles.stepCurrent
+                  : ''
+            return (
+              <li
+                key={step}
+                className={`${styles.step} ${stepClass}`.trim()}
+                aria-current={index === currentIndex ? 'step' : undefined}
+              >
+                {ORDER_ITEM_STATUS_LABELS[step]}
+              </li>
+            )
+          })}
         </ol>
       )}
 
-      {error && (
-        <p className="field-error" role="alert">
-          {error}
-        </p>
-      )}
+      <FormError message={error} />
 
-      <div className="status-buttons">
+      <div className={styles.buttons}>
         {target && (
-          <Button type="button" onClick={handleAdvance} disabled={pending}>
-            {pending ? 'Avançando...' : `Avançar para ${ORDER_ITEM_STATUS_LABELS[target]}`}
+          <Button type="button" onClick={handleAdvance} loading={pending}>
+            Avançar para {ORDER_ITEM_STATUS_LABELS[target]}
           </Button>
         )}
 
-        {canCancel(status) && !confirmingCancel && (
+        {canCancel(status) && (
           <Button
             type="button"
             variant="destructive"
@@ -96,24 +106,18 @@ export function StatusActions({ itemId, status, onChanged }: StatusActionsProps)
             Cancelar pedido
           </Button>
         )}
-
-        {confirmingCancel && (
-          <div className="confirm-inline">
-            <span>Cancelar este item?</span>
-            <Button type="button" variant="destructive" onClick={handleCancel} disabled={pending}>
-              {pending ? 'Cancelando...' : 'Confirmar cancelamento'}
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setConfirmingCancel(false)}
-              disabled={pending}
-            >
-              Voltar
-            </Button>
-          </div>
-        )}
       </div>
+
+      <ConfirmDialog
+        open={confirmingCancel}
+        title="Cancelar este item?"
+        description="O comprador é notificado e o cancelamento não pode ser desfeito."
+        confirmLabel="Confirmar cancelamento"
+        destructive
+        pending={pending}
+        onConfirm={handleCancel}
+        onCancel={() => setConfirmingCancel(false)}
+      />
     </div>
   )
 }

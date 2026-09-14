@@ -2,8 +2,11 @@ import { Link, useParams } from 'react-router-dom'
 import { Card } from '../../components/ui/Card'
 import { PriorityBadge } from '../../components/ui/PriorityBadge'
 import { StatusBadge } from '../../components/ui/StatusBadge'
+import { DetailList } from '../../components/data/DetailList'
 import { ErrorState } from '../../components/feedback/ErrorState'
 import { Spinner } from '../../components/feedback/Spinner'
+import { Page } from '../../components/layout/Page'
+import { PageHeader } from '../../components/layout/PageHeader'
 import { InternalCommentsPanel } from '../support/InternalCommentsPanel'
 import { CONVERSATION_REASON_LABELS } from '../conversations/reasons'
 import { formatCurrencyBRL, formatDate } from '../../lib/utils/format'
@@ -32,49 +35,48 @@ export function OpsConversationDetailPage() {
   const reasonLabel = CONVERSATION_REASON_LABELS[conversation.reason as ConversationReason]
 
   return (
-    <div className="page page-wide">
-      <div className="item-detail-header">
-        <h1>{item.product.name}</h1>
-        <StatusBadge status={item.status} />
-        <PriorityBadge priority={conversation.effective_priority} />
-      </div>
-      {item.product.description && <p className="text-muted">{item.product.description}</p>}
+    <Page width="wide">
+      <PageHeader
+        title={item.product.name}
+        subtitle="Conteúdo da conversa com o Buyer não é visível para Ops."
+        meta={
+          <>
+            <StatusBadge status={item.status} />
+            <PriorityBadge priority={conversation.effective_priority} />
+          </>
+        }
+        breadcrumbs={[
+          { label: 'Fila de atendimento', to: '/ops/queue' },
+          { label: reasonLabel ?? conversation.reason },
+        ]}
+        actions={<Link to={`/ops/order-items/${item.id}`}>Ver item</Link>}
+      />
 
       <Card>
-        <dl className="detail-list">
-          <dt>Seller</dt>
-          <dd>{item.seller.name}</dd>
-
-          <dt>Buyer</dt>
-          <dd>{item.buyer.name}</dd>
-
-          <dt>Quantidade</dt>
-          <dd>{item.quantity}</dd>
-
-          <dt>Preço</dt>
-          <dd>{formatCurrencyBRL(item.purchase_price)}</dd>
-
-          <dt>Pedido</dt>
-          <dd>
-            #{item.order.id.slice(0, 8)} — {formatDate(item.order.created_at)}
-          </dd>
-
-          <dt>Motivo da conversa</dt>
-          <dd>{reasonLabel ?? conversation.reason}</dd>
-
-          <dt>Status da conversa</dt>
-          <dd>{conversation.status === 'open' ? 'Aberta' : 'Encerrada'}</dd>
-        </dl>
+        <DetailList
+          entries={[
+            { term: 'Vendedor', value: item.seller.name },
+            { term: 'Comprador', value: item.buyer.name },
+            { term: 'Quantidade', value: item.quantity },
+            { term: 'Preço', value: formatCurrencyBRL(item.purchase_price) },
+            {
+              term: 'Pedido',
+              value: `#${item.order.id.slice(0, 8)} — ${formatDate(item.order.created_at)}`,
+            },
+            { term: 'Motivo da conversa', value: reasonLabel ?? conversation.reason },
+            {
+              term: 'Situação',
+              value: conversation.status === 'open' ? 'Aberta' : 'Encerrada',
+            },
+          ]}
+        />
       </Card>
 
-      <p className="text-muted">Conteúdo da conversa com o Buyer não é visível para Ops.</p>
-      <p>
-        <Link to={`/ops/order-items/${item.id}`}>Ver item</Link>
-      </p>
-
-      <PriorityActions conversation={conversation} onChanged={state.retry} />
+      <Card>
+        <PriorityActions conversation={conversation} onChanged={state.retry} />
+      </Card>
 
       <InternalCommentsPanel itemId={item.id} viewerRole="ops" />
-    </div>
+    </Page>
   )
 }

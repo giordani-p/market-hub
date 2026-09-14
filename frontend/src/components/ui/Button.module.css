@@ -1,0 +1,105 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-tight);
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Tamanhos: md respeita o alvo de toque; sm e para barra de filtro e
+   acao dentro de linha de tabela, onde 44px quebraria a densidade. */
+.md {
+  min-height: var(--touch-target);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-body-sm);
+}
+
+.sm {
+  min-height: 2rem;
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--font-size-body-sm);
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+.primary {
+  background: var(--color-primary);
+  color: var(--color-primary-fg);
+}
+
+.primary:not(:disabled):hover {
+  background: var(--color-primary-hover);
+}
+
+.primary:not(:disabled):active {
+  background: var(--color-primary-active);
+}
+
+.secondary {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-fg);
+}
+
+.secondary:not(:disabled):hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* Tertiary: acao auxiliar, peso de link. */
+.tertiary {
+  background: transparent;
+  color: var(--color-primary);
+}
+
+.tertiary:not(:disabled):hover {
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+
+.destructive {
+  background: var(--color-danger-solid);
+  color: var(--color-primary-fg);
+}
+
+.destructive:not(:disabled):hover {
+  background: color-mix(in srgb, var(--color-danger-solid) 85%, black);
+}
+
+/* Spinner interno: mantem a largura do botao estavel durante a submissao,
+   em vez de trocar o rotulo e fazer o botao pular de tamanho. */
+.spinner {
+  width: 0.9em;
+  height: 0.9em;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  animation: button-spin 0.8s linear infinite;
+}
+
+@keyframes button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 2s;
+  }
+}

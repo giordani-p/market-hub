@@ -1,0 +1,26 @@
+.detailList {
+  display: grid;
+  grid-template-columns: minmax(8rem, auto) 1fr;
+  gap: var(--space-3) var(--space-6);
+  margin: 0;
+  font-size: var(--font-size-body-sm);
+}
+
+.term {
+  color: var(--color-muted);
+}
+
+.definition {
+  margin: 0;
+}
+
+@media (max-width: 480px) {
+  .detailList {
+    grid-template-columns: 1fr;
+    gap: var(--space-1);
+  }
+
+  .definition {
+    margin-bottom: var(--space-3);
+  }
+}

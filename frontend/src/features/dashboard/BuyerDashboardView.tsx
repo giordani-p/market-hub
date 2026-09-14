@@ -2,71 +2,76 @@ import { Link } from 'react-router-dom'
 import { Card } from '../../components/ui/Card'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { EmptyState } from '../../components/feedback/EmptyState'
+import { Page } from '../../components/layout/Page'
+import { PageHeader } from '../../components/layout/PageHeader'
+import { Section } from '../../components/layout/Section'
 import { formatCurrencyBRL, formatDateTime } from '../../lib/utils/format'
 import type { BuyerDashboard } from '../../types/dashboard'
-import { SummaryStat } from './SummaryStat'
+import { SummaryGrid, SummaryStat } from './SummaryStat'
+import styles from './BuyerDashboardView.module.css'
 
 export function BuyerDashboardView({ data }: { data: BuyerDashboard }) {
   const { summary, attention, recent } = data
 
   return (
-    <div className="page page-wide">
-      <h1>Início</h1>
+    <Page>
+      <PageHeader title="Início" subtitle="Seus pedidos e o que precisa da sua atenção." />
 
-      <section className="dashboard-section">
-        <h2>Resumo</h2>
-        <div className="dashboard-summary">
+      <Section title="Resumo">
+        <SummaryGrid>
           <SummaryStat label="Pedidos ativos" value={summary.active_orders} to="/buyer/orders" />
           <SummaryStat
             label="Pedidos concluídos"
             value={summary.completed_orders}
             to="/buyer/orders"
           />
-        </div>
-      </section>
+        </SummaryGrid>
+      </Section>
 
-      <section className="dashboard-section">
-        <h2>Atenção</h2>
+      <Section title="Atenção">
         {attention.open_conversations === 0 ? (
           <EmptyState title="Nenhuma conversa em aberto." />
         ) : (
-          <Link to="/buyer/orders" className="dashboard-attention-link">
+          <Link to="/buyer/orders">
             {attention.open_conversations}{' '}
             {attention.open_conversations === 1 ? 'conversa em aberto' : 'conversas em aberto'}
           </Link>
         )}
-      </section>
+      </Section>
 
-      <section className="dashboard-section">
-        <h2>Recentes</h2>
+      <Section
+        title="Recentes"
+        action={recent.orders.length > 0 ? <Link to="/buyer/orders">Ver todos</Link> : undefined}
+      >
         {recent.orders.length === 0 ? (
-          <>
-            <EmptyState title="Você ainda não fez nenhum pedido." />
-            <Link to="/catalog">Ir ao catálogo</Link>
-          </>
+          <EmptyState
+            title="Você ainda não fez nenhum pedido."
+            description="Escolha um produto no catálogo para começar."
+            action={<Link to="/catalog">Ir ao catálogo</Link>}
+          />
         ) : (
-          <div className="order-list">
+          <div className={styles.orderList}>
             {recent.orders.map((order) => (
               <Card key={order.order_id}>
-                <div className="order-card-header">
+                <div className={styles.orderHeader}>
                   <Link to={`/buyer/orders/${order.order_id}`}>
                     Pedido #{order.order_id.slice(0, 8)}
                   </Link>
+                  <span className={styles.orderMeta}>
+                    {formatDateTime(order.created_at)} · {formatCurrencyBRL(order.total_amount)}
+                  </span>
                 </div>
-                <p className="text-muted">
-                  {formatDateTime(order.created_at)} · {formatCurrencyBRL(order.total_amount)}
-                </p>
-                <ul className="order-items">
+                <ul className={styles.items}>
                   {order.items.map((item) => (
-                    <li key={item.order_item_id} className="order-item-row">
+                    <li key={item.order_item_id} className={styles.item}>
                       <Link
                         to={`/buyer/orders/${order.order_id}/items/${item.order_item_id}`}
-                        className="order-item-link"
+                        className={styles.itemLink}
                       >
-                        <span>{item.product.name}</span>
-                        <span className="text-muted">x{item.quantity}</span>
-                        <StatusBadge status={item.status} />
+                        {item.product.name}
                       </Link>
+                      <span className={styles.orderMeta}>x{item.quantity}</span>
+                      <StatusBadge status={item.status} />
                     </li>
                   ))}
                 </ul>
@@ -74,7 +79,7 @@ export function BuyerDashboardView({ data }: { data: BuyerDashboard }) {
             ))}
           </div>
         )}
-      </section>
-    </div>
+      </Section>
+    </Page>
   )
 }

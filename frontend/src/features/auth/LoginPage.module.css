@@ -1,0 +1,40 @@
+.loginPage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--space-4);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 100%;
+  max-width: 22rem;
+  padding: var(--space-8);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-top: 4px solid var(--color-brand);
+  border-radius: var(--radius-lg);
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.title {
+  color: var(--color-primary);
+}
+
+.subtitle {
+  color: var(--color-muted);
+  font-size: var(--font-size-body-sm);
+}
+
+.error {
+  color: var(--color-danger);
+  font-size: var(--font-size-body-sm);
+}

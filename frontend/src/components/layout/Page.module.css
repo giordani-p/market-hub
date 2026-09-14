@@ -1,0 +1,21 @@
+/*
+ * Container de conteudo de tela. Largura padrao para leitura e formulario;
+ * `wide` para as telas operacionais, onde a densidade de informacao
+ * justifica ocupar mais espaco.
+ */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  width: 100%;
+  max-width: var(--container-max);
+  margin-inline: auto;
+}
+
+.wide {
+  max-width: var(--container-max-wide);
+}
+
+.narrow {
+  max-width: 42rem;
+}

@@ -84,16 +84,16 @@ describe('ConversationPanel', () => {
     )
     render(<ConversationPanel itemId="item-1" viewerRole="seller" />)
 
-    const buyerBubble = (await screen.findByText('Oi')).closest('.message-row')
-    expect(buyerBubble).toHaveClass('message-row-theirs')
+    const buyerBubble = (await screen.findByText('Oi')).closest('[data-author]')
+    expect(buyerBubble).toHaveAttribute('data-author', 'theirs')
 
     const user = userEvent.setup()
     await user.type(screen.getByPlaceholderText('Escrever mensagem...'), 'Olá, tudo bem?')
     await user.click(screen.getByRole('button', { name: 'Enviar' }))
 
     expect(sendMessage).toHaveBeenCalledWith('conv-1', 'Olá, tudo bem?')
-    const sellerBubble = (await screen.findByText('Olá, tudo bem?')).closest('.message-row')
-    expect(sellerBubble).toHaveClass('message-row-mine')
+    const sellerBubble = (await screen.findByText('Olá, tudo bem?')).closest('[data-author]')
+    expect(sellerBubble).toHaveAttribute('data-author', 'mine')
   })
 
   it('disables the composer once the conversation is closed', async () => {
@@ -123,8 +123,8 @@ describe('ConversationPanel', () => {
     })
     render(<ConversationPanel itemId="item-1" viewerRole="buyer" />)
 
-    const bubble = (await screen.findByText('Oi')).closest('.message-row')
-    expect(bubble).toHaveClass('message-row-mine')
+    const bubble = (await screen.findByText('Oi')).closest('[data-author]')
+    expect(bubble).toHaveAttribute('data-author', 'mine')
     expect(screen.getByRole('heading', { name: 'Conversa com o vendedor' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Encerrar conversa' })).not.toBeInTheDocument()
   })

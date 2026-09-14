@@ -64,6 +64,6 @@ describe('AppRouter — guarda de rota', () => {
 
     render(<AppRouter />)
 
-    expect(screen.getByRole('heading', { name: 'Fila de Ops' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Fila de atendimento' })).toBeInTheDocument()
   })
 })

@@ -19,6 +19,7 @@ import {
 } from './api'
 import { buildNotificationCopy } from './copy'
 import { resolveNotificationRoute } from './resolveRoute'
+import styles from './NotificationBell.module.css'
 
 const PAGE_SIZE = 10
 
@@ -99,7 +100,8 @@ export function NotificationBell({ role }: { role: UserRole }) {
       await markAllNotificationsRead()
       setUnreadCount(0)
       setNotifications(
-        (prev) => prev?.map((n) => ({ ...n, read_at: n.read_at ?? new Date().toISOString() })) ?? null,
+        (prev) =>
+          prev?.map((n) => ({ ...n, read_at: n.read_at ?? new Date().toISOString() })) ?? null,
       )
     } catch {
       // botao continua disponivel para nova tentativa; nao trava o dropdown.
@@ -136,21 +138,21 @@ export function NotificationBell({ role }: { role: UserRole }) {
   const hasOlder = notifications !== null && notifications.length < total
 
   return (
-    <div className="notification-bell" ref={containerRef}>
+    <div className={styles.notificationBell} ref={containerRef}>
       <button
         type="button"
-        className="notification-trigger"
+        className={styles.trigger}
         onClick={handleToggle}
         aria-label={unreadCount > 0 ? `${unreadCount} notificações não lidas` : 'Notificações'}
         aria-expanded={open}
       >
         <Bell size={20} aria-hidden="true" />
-        {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
+        {unreadCount > 0 && <span className={styles.badge}>{unreadCount}</span>}
       </button>
 
       {open && (
-        <div className="notification-dropdown">
-          <div className="notification-dropdown-header">
+        <div className={styles.dropdown}>
+          <div className={styles.dropdownHeader}>
             <h2>Notificações</h2>
             <Button
               type="button"
@@ -163,27 +165,25 @@ export function NotificationBell({ role }: { role: UserRole }) {
           </div>
 
           {notifications === null && loading && <Spinner label="Carregando notificações..." />}
-          {loadError && (
-            <ErrorState message={loadError} onRetry={() => loadNotifications(1)} />
-          )}
+          {loadError && <ErrorState message={loadError} onRetry={() => loadNotifications(1)} />}
           {notifications !== null && notifications.length === 0 && !loadError && (
             <EmptyState title="Nenhuma notificação ainda." />
           )}
 
           {notifications !== null && notifications.length > 0 && (
-            <ul className="notification-list">
+            <ul className={styles.list}>
               {notifications.map((notification) => {
                 const copy = buildNotificationCopy(notification)
                 return (
                   <li key={notification.id}>
                     <button
                       type="button"
-                      className={`notification-item${notification.read_at ? '' : ' notification-item-unread'}`}
+                      className={`${styles.item} ${notification.read_at ? '' : styles.itemUnread}`.trim()}
                       onClick={() => handleSelect(notification)}
                     >
-                      <span className="notification-item-title">{copy.title}</span>
-                      <span className="notification-item-message">{copy.message}</span>
-                      <span className="notification-item-time">
+                      <span className={styles.itemTitle}>{copy.title}</span>
+                      <span className={styles.itemMessage}>{copy.message}</span>
+                      <span className={styles.itemTime}>
                         {formatDateTime(notification.created_at)}
                       </span>
                     </button>

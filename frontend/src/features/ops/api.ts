@@ -97,9 +97,7 @@ export function buildOpsOrderItemsQuery(filters: OpsOrderItemFilters): string {
 export function fetchOpsOrderItems(
   filters: OpsOrderItemFilters,
 ): Promise<OpsOrderItemListResponse> {
-  return apiRequest<OpsOrderItemListResponse>(
-    `/ops/order-items${buildOpsOrderItemsQuery(filters)}`,
-  )
+  return apiRequest<OpsOrderItemListResponse>(`/ops/order-items${buildOpsOrderItemsQuery(filters)}`)
 }
 
 export function fetchOpsItemConversations(itemId: string): Promise<OpsConversation[]> {

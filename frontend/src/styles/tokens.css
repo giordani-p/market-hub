@@ -1,0 +1,129 @@
+/*
+ * Tokens do Market Hub.
+ *
+ * Paleta inspirada no Mercado Livre: amarelo de marca como acento, azul de
+ * acao/link nos botoes primarios e verde/vermelho/laranja para
+ * sucesso/erro/alerta. Tons de bom senso a partir da marca publica, nao
+ * copiados de um design system oficial do Mercado Livre. Tema unico
+ * (claro) -- a skill de projeto nao define paleta escura, e o Mercado
+ * Livre real tambem nao tem dark mode.
+ *
+ * Os valores de cor sao os mesmos desde a F0 e foram preservados na F8.
+ * A unica adicao foi a separacao entre fundo de pagina (--color-canvas,
+ * cinza) e superficie (--color-surface, branco), decidida com o autor:
+ * e o contraste card-sobre-cinza que faz a tela parecer marketplace.
+ *
+ * Breakpoints do projeto -- CSS nativo nao aceita variavel em @media,
+ * entao ficam documentados aqui e usados literalmente nos modulos:
+ *
+ *   sm   480px   telefone grande
+ *   md   768px   tablet, quebra da sidebar e das tabelas
+ *   lg  1024px   desktop
+ *   xl  1200px   container maximo
+ */
+:root {
+  color-scheme: light;
+
+  /* ---------- Cor: superficie e texto ---------- */
+  --color-canvas: #eeeeee;
+  --color-surface: #ffffff;
+  --color-surface-subtle: #f5f5f5;
+  /* Mantido como branco: e a base dos color-mix de bolha e suporte, que
+     acontecem sempre sobre um card, nunca sobre o fundo da pagina. */
+  --color-bg: #ffffff;
+  --color-fg: #333333;
+  --color-muted: #757575;
+  --color-border: #e5e5e5;
+
+  /* ---------- Cor: acao e marca ---------- */
+  --color-primary: #3483fa;
+  --color-primary-hover: #2968c8;
+  --color-primary-active: #1f4e96;
+  --color-primary-fg: #ffffff;
+  --color-brand: #ffe600;
+  --color-brand-fg: #333333;
+
+  /* ---------- Cor: semantica ---------- */
+  --color-success: #00a650;
+  --color-danger: #f23d4f;
+  --color-warning: #a6600a;
+  /* --color-danger puro com texto branco fica ~3.8:1 (abaixo do WCAG AA
+     4.5:1) -- usar esta variante mais escura em qualquer preenchimento
+     solido com texto branco (botao destructive, badges). */
+  --color-danger-solid: color-mix(in srgb, var(--color-danger) 80%, black);
+
+  /* ---------- Cor: superficies derivadas ---------- */
+  /* Bolha do Seller (voce): tom solido do azul de acao. Bolha do Buyer:
+     neutro derivado do fundo, sem cor propria -- quem fala e voce tem cor,
+     quem fala e o comprador nao compete com ela. */
+  --color-bubble-mine-bg: var(--color-primary);
+  --color-bubble-mine-fg: var(--color-primary-fg);
+  --color-bubble-theirs-bg: color-mix(in srgb, var(--color-muted) 14%, var(--color-bg));
+
+  /* Suporte interno: tom "de bastidor" derivado do amarelo de marca, bem
+     dessaturado -- nunca a mesma superficie do chat com o Buyer. */
+  --color-support-bg: color-mix(in srgb, var(--color-brand) 10%, var(--color-bg));
+  --color-support-border: color-mix(in srgb, var(--color-brand) 60%, var(--color-muted));
+
+  /* Realce de linha e selecao, derivado do azul de acao. */
+  --color-primary-soft: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface));
+  --color-primary-softer: color-mix(in srgb, var(--color-primary) 4%, var(--color-surface));
+
+  /* ---------- Espacamento: 4 / 8 / 12 / 16 / 24 / 32 / 48 / 64 ---------- */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  /* ---------- Tipografia ---------- */
+  --font-family-base:
+    'Proxima Nova', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+  --font-size-display: 2.5rem;
+  --font-size-h1: 2rem;
+  --font-size-h2: 1.75rem;
+  --font-size-h3: 1.5rem;
+  --font-size-h4: 1.25rem;
+  --font-size-subtitle: 1.125rem;
+  --font-size-body: 1rem;
+  --font-size-body-sm: 0.875rem;
+  --font-size-caption: 0.75rem;
+  --line-height-tight: 1.25;
+  --line-height-base: 1.5;
+  --font-weight-regular: 400;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* ---------- Raio ---------- */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-pill: 999px;
+
+  /* ---------- Elevacao: so camada flutuante ---------- */
+  /* Superficie inline se separa por borda, como manda a skill. Sombra
+     existe apenas para o que flutua acima do conteudo. */
+  --shadow-dropdown: 0 2px 8px rgb(0 0 0 / 12%);
+  --shadow-dialog: 0 8px 24px rgb(0 0 0 / 16%);
+
+  /* ---------- Layout ---------- */
+  --container-max: 1200px;
+  --container-max-wide: 1440px;
+  --header-height: 56px;
+  --sidebar-width: 220px;
+  --sidebar-width-collapsed: 64px;
+  /* Alvo minimo de toque. */
+  --touch-target: 44px;
+
+  /* ---------- Movimento ---------- */
+  --transition-fast: 0.15s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --transition-fast: 0s;
+  }
+}

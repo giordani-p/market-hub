@@ -1,9 +1,21 @@
+import { Plus } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Button } from '../../components/ui/Button'
-import { Card } from '../../components/ui/Card'
+import { Tag } from '../../components/ui/Tag'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
+  TableRowLink,
+} from '../../components/data/Table'
 import { EmptyState } from '../../components/feedback/EmptyState'
 import { ErrorState } from '../../components/feedback/ErrorState'
-import { Spinner } from '../../components/feedback/Spinner'
+import { SkeletonList } from '../../components/ui/Skeleton'
+import { Page } from '../../components/layout/Page'
+import { PageHeader } from '../../components/layout/PageHeader'
 import { useAuth } from '../../app/providers/auth-context'
 import { formatCurrencyBRL } from '../../lib/utils/format'
 import { useAsync } from '../../lib/utils/useAsync'
@@ -22,47 +34,68 @@ export function SellerOffersListPage() {
     return { offers, names }
   }, [sellerId])
 
-  if (state.status === 'loading') {
-    return <Spinner label="Carregando ofertas..." />
-  }
-  if (state.status === 'error') {
-    return <ErrorState message={state.error} onRetry={state.retry} />
-  }
-
-  const { offers, names } = state.data
+  const newOfferAction = (
+    <Link to="/seller/offers/new">
+      <Button type="button">
+        <Plus size={16} aria-hidden="true" />
+        Nova oferta
+      </Button>
+    </Link>
+  )
 
   return (
-    <div className="page">
-      <div className="page-header-row">
-        <h1>Minhas ofertas</h1>
-        <Link to="/seller/offers/new">
-          <Button type="button">Nova oferta</Button>
-        </Link>
-      </div>
+    <Page width="wide">
+      <PageHeader
+        title="Minhas ofertas"
+        subtitle="Preço e estoque que a sua loja publica no catálogo."
+        actions={newOfferAction}
+      />
 
-      {offers.length === 0 ? (
+      {state.status === 'loading' && <SkeletonList variant="row" label="Carregando ofertas..." />}
+      {state.status === 'error' && <ErrorState message={state.error} onRetry={state.retry} />}
+
+      {state.status === 'success' && state.data.offers.length === 0 && (
         <EmptyState
           title="Você ainda não tem ofertas."
           description="Cadastre um produto da vitrine e publique preço e estoque."
+          action={newOfferAction}
         />
-      ) : (
-        <div className="order-list">
-          {offers.map((offer) => (
-            <Link key={offer.id} to={`/seller/offers/${offer.id}`} className="product-link">
-              <Card>
-                <div className="order-item-row">
-                  <span>{names.get(offer.product_id) ?? 'Produto'}</span>
-                  <span>{formatCurrencyBRL(offer.price)}</span>
-                  <span className="text-muted">{offer.stock} em estoque</span>
-                  <span className="text-muted">
-                    {offer.available ? 'Disponível' : 'Indisponível'}
-                  </span>
-                </div>
-              </Card>
-            </Link>
-          ))}
-        </div>
       )}
-    </div>
+
+      {state.status === 'success' && state.data.offers.length > 0 && (
+        <Table caption="Ofertas publicadas pela sua loja">
+          <TableHead>
+            <TableRow>
+              <TableHeaderCell>Produto</TableHeaderCell>
+              <TableHeaderCell numeric>Preço</TableHeaderCell>
+              <TableHeaderCell numeric>Estoque</TableHeaderCell>
+              <TableHeaderCell>Disponível</TableHeaderCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {state.data.offers.map((offer) => (
+              <TableRow key={offer.id} linked>
+                <TableCell label="Produto">
+                  <TableRowLink to={`/seller/offers/${offer.id}`}>
+                    {state.data.names.get(offer.product_id) ?? 'Produto'}
+                  </TableRowLink>
+                </TableCell>
+                <TableCell label="Preço" numeric>
+                  {formatCurrencyBRL(offer.price)}
+                </TableCell>
+                <TableCell label="Estoque" numeric>
+                  {offer.stock}
+                </TableCell>
+                <TableCell label="Disponível">
+                  <Tag tone={offer.available ? 'success' : 'muted'} dot>
+                    {offer.available ? 'Disponível' : 'Indisponível'}
+                  </Tag>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+    </Page>
   )
 }

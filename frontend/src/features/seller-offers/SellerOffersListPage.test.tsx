@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import { AuthContext } from '../../app/providers/auth-context'
+import { ToastProvider } from '../../components/overlay/ToastProvider'
 import { ApiRequestError } from '../../lib/api/client'
 import type { AuthUser } from '../../types/auth'
 import type { Offer, Product } from '../../types/catalog'
@@ -43,11 +44,13 @@ const offer: Offer = {
 
 function authWrap(ui: ReactNode) {
   return (
-    <AuthContext.Provider
-      value={{ status: 'authenticated', user: seller, login: vi.fn(), logout: vi.fn() }}
-    >
-      {ui}
-    </AuthContext.Provider>
+    <ToastProvider>
+      <AuthContext.Provider
+        value={{ status: 'authenticated', user: seller, login: vi.fn(), logout: vi.fn() }}
+      >
+        {ui}
+      </AuthContext.Provider>
+    </ToastProvider>
   )
 }
 
@@ -60,11 +63,13 @@ describe('seller offers', () => {
     api.fetchOffers.mockResolvedValue([offer])
     api.fetchProducts.mockResolvedValue([product])
 
-    render(authWrap(
-      <MemoryRouter>
-        <SellerOffersListPage />
-      </MemoryRouter>,
-    ))
+    render(
+      authWrap(
+        <MemoryRouter>
+          <SellerOffersListPage />
+        </MemoryRouter>,
+      ),
+    )
 
     expect(await screen.findByText('Tenis Runner')).toBeInTheDocument()
     expect(api.fetchOffers).toHaveBeenCalledWith('seller-1')

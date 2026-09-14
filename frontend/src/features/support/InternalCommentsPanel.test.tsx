@@ -55,7 +55,11 @@ describe('InternalCommentsPanel', () => {
     )
     await user.click(screen.getByRole('button', { name: 'Registrar' }))
 
-    expect(createInternalComment).toHaveBeenCalledWith('item-1', 'Cliente pediu prioridade.', 'seller')
+    expect(createInternalComment).toHaveBeenCalledWith(
+      'item-1',
+      'Cliente pediu prioridade.',
+      'seller',
+    )
     expect(await screen.findByText('Cliente pediu prioridade.')).toBeInTheDocument()
   })
 

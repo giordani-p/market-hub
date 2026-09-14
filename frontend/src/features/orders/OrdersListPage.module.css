@@ -1,0 +1,29 @@
+.orderList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.orderLink {
+  text-decoration: none;
+  color: inherit;
+}
+
+.orderHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.orderId {
+  font-weight: var(--font-weight-semibold);
+}
+
+.orderDate {
+  color: var(--color-muted);
+  font-size: var(--font-size-body-sm);
+}

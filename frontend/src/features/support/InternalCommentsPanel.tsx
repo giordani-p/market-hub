@@ -8,6 +8,8 @@ import { errorMessage } from '../../lib/utils/errorMessage'
 import { formatDateTime } from '../../lib/utils/format'
 import { useAsync } from '../../lib/utils/useAsync'
 import { createInternalComment, fetchInternalComments } from './api'
+import { FormError } from '../../components/feedback/FormError'
+import styles from './InternalCommentsPanel.module.css'
 
 type ViewerRole = 'seller' | 'ops'
 
@@ -27,7 +29,10 @@ interface InternalCommentsPanelProps {
   viewerRole?: ViewerRole
 }
 
-export function InternalCommentsPanel({ itemId, viewerRole = 'seller' }: InternalCommentsPanelProps) {
+export function InternalCommentsPanel({
+  itemId,
+  viewerRole = 'seller',
+}: InternalCommentsPanelProps) {
   const state = useAsync(() => fetchInternalComments(itemId, viewerRole), [itemId, viewerRole])
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
@@ -51,12 +56,12 @@ export function InternalCommentsPanel({ itemId, viewerRole = 'seller' }: Interna
   }
 
   return (
-    <div className="support-log">
-      <h2>
+    <div className={styles.panel}>
+      <h2 className={styles.title}>
         <LifeBuoy size={18} aria-hidden="true" />
         Suporte interno
       </h2>
-      <p className="text-muted">{PANEL_DESCRIPTION[viewerRole]}</p>
+      <p className={styles.description}>{PANEL_DESCRIPTION[viewerRole]}</p>
 
       {state.status === 'loading' && <Spinner label="Carregando comentários..." />}
       {state.status === 'error' && <ErrorState message={state.error} onRetry={state.retry} />}
@@ -65,36 +70,33 @@ export function InternalCommentsPanel({ itemId, viewerRole = 'seller' }: Interna
       )}
 
       {state.status === 'success' && state.data.length > 0 && (
-        <ul className="support-entries">
+        <ul className={styles.entries}>
           {state.data.map((comment) => (
-            <li key={comment.id} className="support-entry">
-              <span className="support-entry-time">{formatDateTime(comment.created_at)}</span>
-              <span className="support-entry-author">
+            <li key={comment.id} className={styles.entry}>
+              <span className={styles.time}>{formatDateTime(comment.created_at)}</span>
+              <span className={styles.author}>
                 {comment.author_type === viewerRole ? 'Você' : OTHER_AUTHOR_LABEL[viewerRole]}
               </span>
-              <span className="support-entry-content">{comment.content}</span>
+              <span>{comment.content}</span>
             </li>
           ))}
         </ul>
       )}
 
-      <div className="support-composer">
+      <div className={styles.composer}>
         <input
-          className="input"
+          className={styles.composerInput}
+          aria-label="Registrar comentário interno"
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           placeholder="Registrar comentário interno..."
           maxLength={2000}
         />
-        <Button type="button" onClick={handleSend} disabled={sending || !draft.trim()}>
-          {sending ? 'Enviando...' : 'Registrar'}
+        <Button type="button" onClick={handleSend} loading={sending} disabled={!draft.trim()}>
+          Registrar
         </Button>
       </div>
-      {sendError && (
-        <p className="field-error" role="alert">
-          {sendError}
-        </p>
-      )}
+      <FormError message={sendError} />
     </div>
   )
 }

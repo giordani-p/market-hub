@@ -1,13 +1,24 @@
 import { Link } from 'react-router-dom'
-import { Card } from '../../components/ui/Card'
 import { PriorityBadge } from '../../components/ui/PriorityBadge'
 import { StatusBadge } from '../../components/ui/StatusBadge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
+  TableRowLink,
+} from '../../components/data/Table'
 import { EmptyState } from '../../components/feedback/EmptyState'
+import { Page } from '../../components/layout/Page'
+import { PageHeader } from '../../components/layout/PageHeader'
+import { Section } from '../../components/layout/Section'
 import { formatCurrencyBRL, formatDateTime } from '../../lib/utils/format'
 import type { EffectivePriority } from '../../types/conversation'
 import type { OpsDashboard } from '../../types/dashboard'
 import { PRIORITY_LABELS } from '../ops/priority'
-import { SummaryStat } from './SummaryStat'
+import { SummaryGrid, SummaryStat } from './SummaryStat'
 
 const PRIORITY_KEYS: EffectivePriority[] = ['critical', 'high', 'medium', 'low']
 
@@ -16,12 +27,11 @@ export function OpsDashboardView({ data }: { data: OpsDashboard }) {
   const preview = attention.priority_queue_preview
 
   return (
-    <div className="page page-wide">
-      <h1>Início</h1>
+    <Page width="wide">
+      <PageHeader title="Início" subtitle="A fila de atendimento de relance." />
 
-      <section className="dashboard-section">
-        <h2>Resumo</h2>
-        <div className="dashboard-summary">
+      <Section title="Resumo">
+        <SummaryGrid>
           <SummaryStat
             label="Conversas abertas"
             value={summary.open_conversations}
@@ -36,40 +46,56 @@ export function OpsDashboardView({ data }: { data: OpsDashboard }) {
               accent={priority === 'critical'}
             />
           ))}
-        </div>
-      </section>
+        </SummaryGrid>
+      </Section>
 
-      <section className="dashboard-section">
-        <h2>Atenção</h2>
+      <Section
+        title="Atenção"
+        action={preview.length > 0 ? <Link to="/ops/queue">Ver fila completa</Link> : undefined}
+      >
         {preview.length === 0 ? (
           <EmptyState title="Nenhuma conversa em aberto." />
         ) : (
-          <>
-            <div className="order-list">
+          <Table caption="Conversas mais urgentes da fila">
+            <TableHead>
+              <TableRow>
+                <TableHeaderCell>Prioridade</TableHeaderCell>
+                <TableHeaderCell>Produto</TableHeaderCell>
+                <TableHeaderCell>Vendedor</TableHeaderCell>
+                <TableHeaderCell>Comprador</TableHeaderCell>
+                <TableHeaderCell numeric>Valor</TableHeaderCell>
+                <TableHeaderCell>Status do item</TableHeaderCell>
+                <TableHeaderCell>Última interação</TableHeaderCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
               {preview.map((item) => (
-                <Link
-                  key={item.conversation_id}
-                  to={`/ops/conversations/${item.conversation_id}`}
-                  className="product-link"
-                >
-                  <Card>
-                    <div className="order-item-row">
-                      <span>{item.product.name}</span>
-                      <span className="text-muted">{item.seller.name}</span>
-                      <span className="text-muted">{item.buyer.name}</span>
-                      <span>{formatCurrencyBRL(item.purchase_price)}</span>
-                      <StatusBadge status={item.order_item_status} />
-                      <PriorityBadge priority={item.effective_priority} />
-                    </div>
-                    <span className="text-muted">{formatDateTime(item.last_interaction_at)}</span>
-                  </Card>
-                </Link>
+                <TableRow key={item.conversation_id} linked>
+                  <TableCell label="Prioridade">
+                    <PriorityBadge priority={item.effective_priority} />
+                  </TableCell>
+                  <TableCell label="Produto">
+                    <TableRowLink to={`/ops/conversations/${item.conversation_id}`}>
+                      {item.product.name}
+                    </TableRowLink>
+                  </TableCell>
+                  <TableCell label="Vendedor">{item.seller.name}</TableCell>
+                  <TableCell label="Comprador">{item.buyer.name}</TableCell>
+                  <TableCell label="Valor" numeric>
+                    {formatCurrencyBRL(item.purchase_price)}
+                  </TableCell>
+                  <TableCell label="Status do item">
+                    <StatusBadge status={item.order_item_status} />
+                  </TableCell>
+                  <TableCell label="Última interação">
+                    {formatDateTime(item.last_interaction_at)}
+                  </TableCell>
+                </TableRow>
               ))}
-            </div>
-            <Link to="/ops/queue">Ver fila completa</Link>
-          </>
+            </TableBody>
+          </Table>
         )}
-      </section>
-    </div>
+      </Section>
+    </Page>
   )
 }

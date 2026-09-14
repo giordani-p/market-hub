@@ -2,6 +2,8 @@ import { useParams } from 'react-router-dom'
 import { Card } from '../../components/ui/Card'
 import { ErrorState } from '../../components/feedback/ErrorState'
 import { Spinner } from '../../components/feedback/Spinner'
+import { Page } from '../../components/layout/Page'
+import { PageHeader } from '../../components/layout/PageHeader'
 import { formatDate } from '../../lib/utils/format'
 import { useAsync } from '../../lib/utils/useAsync'
 import { fetchOrder } from './api'
@@ -21,12 +23,18 @@ export function OrderDetailPage() {
   const order = state.data
 
   return (
-    <div className="page">
-      <h1>Pedido #{order.id.slice(0, 8)}</h1>
-      <p className="text-muted">Criado em {formatDate(order.created_at)}</p>
+    <Page>
+      <PageHeader
+        title={`Pedido #${order.id.slice(0, 8)}`}
+        subtitle={`Criado em ${formatDate(order.created_at)}`}
+        breadcrumbs={[
+          { label: 'Meus pedidos', to: '/buyer/orders' },
+          { label: `#${order.id.slice(0, 8)}` },
+        ]}
+      />
       <Card>
         <OrderItemsTable items={order.items} orderId={order.id} />
       </Card>
-    </div>
+    </Page>
   )
 }

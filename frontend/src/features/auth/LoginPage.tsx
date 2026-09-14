@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import { useAuth } from '../../app/providers/auth-context'
 import { Button } from '../../components/ui/Button'
-import { Input } from '../../components/ui/Input'
+import { TextField } from '../../components/ui/TextField'
 import { ApiRequestError } from '../../lib/api/client'
+import styles from './LoginPage.module.css'
 
 export function LoginPage() {
   const { login } = useAuth()
@@ -29,10 +30,13 @@ export function LoginPage() {
   }
 
   return (
-    <div className="login-page">
-      <form className="login-form" onSubmit={handleSubmit}>
-        <h1>Market Hub</h1>
-        <Input
+    <div className={styles.loginPage}>
+      <form className={styles.card} onSubmit={handleSubmit}>
+        <div className={styles.brand}>
+          <h1 className={styles.title}>Market Hub</h1>
+          <p className={styles.subtitle}>Entre para acompanhar seus pedidos.</p>
+        </div>
+        <TextField
           label="Email"
           type="email"
           name="email"
@@ -41,7 +45,7 @@ export function LoginPage() {
           onChange={(event) => setEmail(event.target.value)}
           required
         />
-        <Input
+        <TextField
           label="Senha"
           type="password"
           name="password"
@@ -51,12 +55,12 @@ export function LoginPage() {
           required
         />
         {error && (
-          <p className="field-error" role="alert">
+          <p className={styles.error} role="alert">
             {error}
           </p>
         )}
-        <Button type="submit" disabled={submitting}>
-          {submitting ? 'Entrando...' : 'Entrar'}
+        <Button type="submit" loading={submitting} fullWidth>
+          Entrar
         </Button>
       </form>
     </div>
