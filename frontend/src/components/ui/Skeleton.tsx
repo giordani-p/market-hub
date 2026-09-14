@@ -1,6 +1,6 @@
 import styles from './Skeleton.module.css'
 
-type SkeletonVariant = 'text' | 'card' | 'row' | 'stat'
+type SkeletonVariant = 'text' | 'card' | 'row' | 'stat' | 'product'
 
 interface SkeletonProps {
   variant?: SkeletonVariant

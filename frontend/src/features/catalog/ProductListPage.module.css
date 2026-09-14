@@ -1,61 +1,76 @@
+/*
+ * Listagem do catalogo: rail de filtros fixo a esquerda e resultados a
+ * direita, o arranjo padrao de listagem de marketplace.
+ *
+ * Abaixo de lg o rail volta para cima da grade, e abaixo de md ele e o
+ * proprio FilterBar colapsado da F8 -- nenhum componente novo so para o
+ * telefone.
+ */
+.layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.rail {
+  position: sticky;
+  top: calc(var(--header-height) + var(--space-6));
+  max-height: calc(100vh - var(--header-height) - var(--space-12));
+  overflow-y: auto;
+}
+
+.results {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.resultsBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.count {
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.sort {
+  min-width: 12rem;
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: var(--space-4);
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
-.productLink {
-  text-decoration: none;
-  color: inherit;
-  display: flex;
+@media (max-width: 1023px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .rail {
+    position: static;
+    max-height: none;
+    overflow-y: visible;
+  }
 }
 
-.product {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  height: 100%;
-}
+@media (max-width: 480px) {
+  .grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
 
-/* O catalogo ainda nao tem imagem de produto no backend. Em vez de deixar
-   o card comecar no texto, uma area neutra segura o lugar dela e mantem
-   todos os cards com a mesma altura de topo. */
-.thumb {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  aspect-ratio: 4 / 3;
-  border-radius: var(--radius-md);
-  background: var(--color-surface-subtle);
-  color: var(--color-muted);
-}
-
-.name {
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-regular);
-  line-height: var(--line-height-base);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.price {
-  margin-top: auto;
-  color: var(--color-muted);
-  font-size: var(--font-size-caption);
-}
-
-.priceValue {
-  display: block;
-  color: var(--color-fg);
-  font-size: var(--font-size-h4);
-  font-weight: var(--font-weight-semibold);
-}
-
-.unavailable {
-  margin-top: auto;
-  color: var(--color-muted);
-  font-size: var(--font-size-body-sm);
+  .sort {
+    width: 100%;
+  }
 }

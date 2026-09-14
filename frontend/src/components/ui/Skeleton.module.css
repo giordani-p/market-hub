@@ -55,3 +55,11 @@
   height: 76px;
   border-radius: var(--radius-lg);
 }
+
+/* Tem a forma do card do catalogo: area de imagem mais tres linhas. Uma
+   barra de largura inteira no lugar de uma grade faz o layout pular
+   quando o conteudo chega. */
+.product {
+  height: 260px;
+  border-radius: var(--radius-lg);
+}

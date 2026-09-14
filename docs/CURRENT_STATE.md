@@ -1,8 +1,8 @@
 # Estado atual do projeto
 
-- **Versao**: 0.11.0
-- **Fase**: F8 Refatoracao de UI e Design System — COMPLETE (backend em P6.3)
-- **Commit de referencia**: d330575
+- **Versao**: 0.12.0
+- **Fase**: F9 Listagem do Catalogo — COMPLETE (backend em P6.3)
+- **Commit de referencia**: 8d8dd17
 - **Repositório**: https://github.com/giordani-p/market-hub
 
 ## Do que se trata
@@ -270,6 +270,21 @@ Fases concluidas e validadas manualmente pelo usuario:
   interface passou a PT-BR de produto ("Pedidos" no lugar de "Meus Order
   Items", "Fila de atendimento" no lugar de "Fila de Ops", "Vendedor" no
   lugar de "Seller (UUID)").
+- **F9 (Listagem do Catalogo)**: especificada em
+  `docs/FRONTEND_F9_SPEC.md`. Sem mudanca de contrato. `/catalog` virou
+  listagem de marketplace: rail de filtros fixo a partir de `lg` (abaixo
+  disso o `FilterBar` colapsado da F8), barra de resultados com contagem em
+  regiao viva e ordenacao, grade de cards uniformes e paginacao de 24.
+  Filtros: busca em nome e descricao sem acento, faixa de preco e somente
+  disponiveis — todos na URL. Ordenacao por menor preco, maior preco e nome;
+  produto sem oferta comprável vai sempre para o fim das duas por preco.
+  O cruzamento produto/oferta saiu de dentro do `.map` (era refeito duas
+  vezes a cada render, em O(produtos x ofertas)) e virou
+  `features/catalog/catalogRows.ts`, memoizado; filtros e ordenacao sao
+  funcoes puras em `catalogFilters.ts` e `catalogSort.ts`. `pricing.ts` foi
+  removido — ficou sem consumidor. O card mostra menor preco em destaque e
+  em quantas lojas o produto esta; sem oferta comprável ele recua e mostra
+  "Sem estoque".
 
 Gaps reais de contrato encontrados e resolvidos ate aqui: CORS ausente
 (F0), `BuyerOrderItem` sem produto em `GET /v1/orders` (F1),
@@ -281,10 +296,23 @@ Ainda nao existe: UI de Notifications push/real-time (fora de escopo,
 so poll); ordenacao por coluna nas tabelas (nenhuma rota do backend aceita
 parametro de sort, e ordenar so a pagina atual no cliente engana mais do
 que ajuda); busca parcial por vendedor ou item (os filtros de ID exigem
-UUID exato, como o backend compara); filtro de catalogo no servidor
-(continua no cliente); imagem de produto; qualquer coisa alem do que este
-documento ja descreve. Ver `docs/FRONTEND_F8_SPEC.md` para o detalhe da
+UUID exato, como o backend compara); qualquer coisa alem do que este
+documento ja descreve. Ver `docs/FRONTEND_F9_SPEC.md` para o detalhe da
 ultima fase fechada.
+
+No catalogo, especificamente, o bloqueio e de dominio e nao de UI:
+
+- **Filtro por categoria** — `Product` nao tem o campo. O agrupamento em
+  seis segmentos existe so em `app/catalog/demo.py`. Decisao ja acordada
+  para quando uma fase de backend abrir: `category` como enum fixo no
+  `Product`, sem tabela nova.
+- **Filtro e nome de loja** — `OfferResponse` traz so `seller_id`, e nao ha
+  rota de sellers registrada em `app/main.py`.
+- **Imagem de produto** — nao ha `image_url` nem estrategia de asset.
+- **Ordenar por novidade** — `Product` nao tem `created_at`.
+- **Filtro e paginacao no servidor** — `GET /v1/products` e
+  `GET /v1/offers` nao aceitam parametro nenhum; a tela baixa os dois
+  inteiros e cruza no cliente.
 
 ### Convencoes de estilo do frontend
 
@@ -436,9 +464,17 @@ Postgres no ar e nao sobe LocalStack.
 ## Proxima etapa
 
 SLA e transcript Ops no backend continuam sem especificacao. O roadmap
-frontend F0-F8 esta completo.
+frontend F0-F9 esta completo.
 
 ## Historico de versoes
+
+- **0.12.0** — F9 do frontend: listagem do catalogo. Rail de filtros, barra
+  de resultados com contagem anunciada, ordenacao, paginacao e card com
+  menor preco e numero de lojas. Filtros de busca, faixa de preco e
+  disponibilidade na URL. Cruzamento produto/oferta extraido para funcoes
+  puras e memoizado; `pricing.ts` removido por falta de consumidor. Sem
+  mudanca de contrato de backend: categoria, loja e imagem continuam
+  impossiveis porque nao existem no dominio.
 
 - **0.11.0** — F8 do frontend: refatoracao de UI e design system. Tokens de
   espacamento/tipografia/raio/elevacao, CSS Modules no lugar do CSS global
