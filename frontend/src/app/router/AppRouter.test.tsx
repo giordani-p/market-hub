@@ -17,10 +17,11 @@ function setPath(path: string) {
 describe('AppRouter — guarda de rota', () => {
   afterEach(() => {
     mockUseAuth.mockReset()
+    vi.restoreAllMocks()
   })
 
   it('redireciona para /login quando não autenticado', () => {
-    setPath('/seller')
+    setPath('/seller/orders')
     mockUseAuth.mockReturnValue({
       status: 'unauthenticated',
       user: null,
@@ -42,9 +43,12 @@ describe('AppRouter — guarda de rota', () => {
       login: vi.fn(),
       logout: vi.fn(),
     })
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      () => new Promise(() => {}), // nunca resolve: so queremos validar a rota renderizada
+    )
 
     render(<AppRouter />)
 
-    expect(screen.getByText(/listagem de Orders/)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Meus Order Items' })).toBeInTheDocument()
   })
 })

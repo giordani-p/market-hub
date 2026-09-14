@@ -9,3 +9,13 @@ export function formatCurrencyBRL(value: string): string {
 export function formatDate(value: string): string {
   return new Date(value).toLocaleDateString('pt-BR')
 }
+
+/** Converte um input `<input type="date">` (yyyy-mm-dd) no inicio do dia em UTC. */
+export function toDayStartUTC(date: string): string {
+  return `${date}T00:00:00Z`
+}
+
+/** Converte um input `<input type="date">` (yyyy-mm-dd) no fim do dia em UTC. */
+export function toDayEndUTC(date: string): string {
+  return `${date}T23:59:59Z`
+}
