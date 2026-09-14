@@ -1,32 +1,24 @@
 # Estado atual do projeto
 
-- **Versao**: 0.12.0
-- **Fase**: F9 Listagem do Catalogo — COMPLETE (backend em P6.3)
-- **Commit de referencia**: 8d8dd17
+- **Versao**: 1.0.0
+- **Fase**: Solucao do desafio — COMPLETE (backend P1–P7 / P6.3 + frontend F0–F9)
+- **Commit de referencia**: 112515a
 - **Repositório**: https://github.com/giordani-p/market-hub
 
 ## Do que se trata
 
-Backend de um Marketplace em Python com FastAPI. A fase P1 cobre o dominio de
-Catalogo (`docs/p1_catalog.md`). A fase P2, especificada em `docs/p2_order.md`,
-cobre pedidos, estoque na efetivacao e autenticacao minima. A fase P3,
-especificada em `docs/P3_Seller_Journey.md`, materializa a operacao do Seller
-sobre os proprios Order Items. A fase P4, especificada em
-`docs/P4_Communication.md`, adiciona Conversation e Messages contextualizadas
-pelo Order Item. A fase P5.1, especificada em `docs/P5.1_Support_Ops.md`,
-adiciona o papel Ops e InternalComment. A fase P5.2, especificada em
-`docs/P5.2_Priority_Policy.md`, adiciona prioridade na Conversation e a fila
-Ops. A fase P5.3, especificada em `docs/P5.3_Closure_Verification.md`, fecha e
-verifica a P5 sem novas capacidades de produto. O resultado do fechamento esta
-em `docs/P5.3_Resultado.md`. A fase P6.1, especificada em
-`docs/P6.1_Foundation_Worker.md`, adiciona a fundacao de Jobs (SQS + Worker) e o
-recalculo periodico de prioridade. A fase P6.2, especificada em
-`docs/P6.2_Notification.md`, adiciona Notifications in-app via o Job
-`NOTIFY_STATUS_CHANGE`. A fase P6.3 adiciona o canal de e-mail simulado no
-console do Worker quando `effective_priority` vira `high` ou `critical`. A fase
-P7, especificada em `docs/P7_Dashboard.md`, adiciona `GET /v1/dashboard` como
-capability de leitura por papel, sem persistencia propria. O plano da fase nao
-deve ser copiado para ca: este documento descreve o que **existe hoje**.
+Solucao full-stack do desafio Market Hub no commit `112515a`: backend em
+**Python** + FastAPI, organizado por dominio em `app/`, e UI React por papel
+em `frontend/`. Cobre os tres objetivos de [`docs/challenge.md`](challenge.md):
+pedidos do vendedor, conversas por Order Item com fila Ops por prioridade, e
+notificacao in-app mais e-mail simulado no Worker quando `effective_priority`
+vira `high` ou `critical`.
+
+O backend fechou em P7 (`GET /v1/dashboard`) com o canal de e-mail da P6.3.
+O frontend fechou em F9 (listagem do catalogo), com o login da PR #21 na
+main. Specs de fase em `docs/pN.md`, `docs/P*.md` e
+`docs/FRONTEND_F{n}_SPEC.md` documentam o caminho; este arquivo descreve o
+**resultado**. Planos de fase nao devem ser copiados para ca.
 
 ## Arquitetura
 
@@ -177,13 +169,13 @@ O contrato `api/openapi.yaml` e a fonte da verdade e e escrito antes do codigo.
 
 ## Frontend
 
-Aplicacao nova em `frontend/` (Vite + React + TypeScript), consumindo o
-backend acima via REST. Roadmap em `docs/FRONTEND_IMPLEMENTATION_PLAN.md`,
-uma spec por fase em `docs/FRONTEND_F{n}_SPEC.md`. Ciclo de cada fase:
-revisar contrato -> UX -> spec -> implementar -> testar -> validar no
-browser -> commit -> proxima fase.
+Aplicacao em `frontend/` (Vite + React + TypeScript), consumindo o backend
+acima via REST. O roadmap F0–F9 em `docs/FRONTEND_IMPLEMENTATION_PLAN.md` e
+as specs `docs/FRONTEND_F{n}_SPEC.md` estao **completos**; nao ha fase
+seguinte. Cada fase foi: revisar contrato -> UX -> spec -> implementar ->
+testar -> validar no browser -> commit.
 
-Fases concluidas e validadas manualmente pelo usuario:
+Fases entregues e validadas manualmente pelo usuario:
 
 - **F0 (Foundation)**: projeto, routing, cliente HTTP, auth (JWT em
   storage), layout e navegacao por role, componentes de UI compartilhados,
@@ -270,6 +262,10 @@ Fases concluidas e validadas manualmente pelo usuario:
   interface passou a PT-BR de produto ("Pedidos" no lugar de "Meus Order
   Items", "Fila de atendimento" no lugar de "Fila de Ops", "Vendedor" no
   lugar de "Seller (UUID)").
+- **Login (PR #21, `6cb208f`)**: entre F8 e F9, `LoginPage` ganhou `Logo`,
+  painel de beneficios da operacao, mostrar/ocultar senha e erros em
+  portugues (validacao no cliente e traducao de `unauthorized`). Sem
+  mudanca de contrato de backend.
 - **F9 (Listagem do Catalogo)**: especificada em
   `docs/FRONTEND_F9_SPEC.md`. Sem mudanca de contrato. `/catalog` virou
   listagem de marketplace: rail de filtros fixo a partir de `lg` (abaixo
@@ -292,20 +288,18 @@ Gaps reais de contrato encontrados e resolvidos ate aqui: CORS ausente
 `GET /v1/order-items/{item_id}` restrito ao Seller, sem acesso do Buyer ao
 proprio item (F5).
 
-Ainda nao existe: UI de Notifications push/real-time (fora de escopo,
-so poll); ordenacao por coluna nas tabelas (nenhuma rota do backend aceita
-parametro de sort, e ordenar so a pagina atual no cliente engana mais do
-que ajuda); busca parcial por vendedor ou item (os filtros de ID exigem
-UUID exato, como o backend compara); qualquer coisa alem do que este
-documento ja descreve. Ver `docs/FRONTEND_F9_SPEC.md` para o detalhe da
-ultima fase fechada.
+Limitacoes da UI fechada (nao sao proxima fase): Notifications so por poll,
+sem push/real-time; tabelas sem ordenacao por coluna (nenhuma rota aceita
+sort, e ordenar so a pagina atual no cliente engana); busca de vendedor ou
+item exige UUID exato. Ver `docs/FRONTEND_F9_SPEC.md` para o detalhe da
+ultima fase de UI.
 
-No catalogo, especificamente, o bloqueio e de dominio e nao de UI:
+No catalogo, o que falta e de dominio — **fora de escopo da solucao
+fechada**, nao uma fase de backend em aberto:
 
 - **Filtro por categoria** — `Product` nao tem o campo. O agrupamento em
-  seis segmentos existe so em `app/catalog/demo.py`. Decisao ja acordada
-  para quando uma fase de backend abrir: `category` como enum fixo no
-  `Product`, sem tabela nova.
+  seis segmentos existe so em `app/catalog/demo.py`. Se o dominio crescer:
+  `category` como enum fixo no `Product`, sem tabela nova.
 - **Filtro e nome de loja** — `OfferResponse` traz so `seller_id`, e nao ha
   rota de sellers registrada em `app/main.py`.
 - **Imagem de produto** — nao ha `image_url` nem estrategia de asset.
@@ -447,11 +441,15 @@ Postgres no ar e nao sobe LocalStack.
 - Testes com `pytest`, em `tests/unit/` e `tests/integration/`.
 - Idioma conforme `.cursor/rules/language-conventions.mdc`.
 
-## O que ainda nao existe
+## Fora do escopo da solucao
+
+A solucao do desafio esta fechada no commit `112515a`. O que segue nao foi
+previsto nesta entrega e nao e backlog aberto:
 
 - Recalculo de prioridade no GET ou por evento de dominio (`MessageCreated`,
   `OrderItemStatusChanged`).
 - Ops lendo Messages Buyer-Seller.
+- SLA e transcript Ops.
 - Pipeline de CI e qualquer artefato de deploy.
 - Cadastro publico de usuarios, refresh token e IdP.
 - Carrinho persistido, pagamentos, entrega.
@@ -461,12 +459,20 @@ Postgres no ar e nao sobe LocalStack.
 - Slack/WhatsApp/SMS reais e SMTP de e-mail (hoje so console no Worker).
 - Notificacoes de `MessageCreated`.
 
-## Proxima etapa
+## Solucao fechada
 
-SLA e transcript Ops no backend continuam sem especificacao. O roadmap
-frontend F0-F9 esta completo.
+Nao ha fase seguinte planejada. Backend em P6.3/P7, frontend em F9, codigo
+de produto em `112515a`. Quem for estender o que esta em
+[`docs/Project_Context.md`](Project_Context.md) (SLA, canais extra) comeca
+por uma spec nova.
 
 ## Historico de versoes
+
+- **1.0.0** — Solucao do desafio fechada. README de onboarding (stack com
+  Python, jornadas Buyer/Seller/Ops, diagrama de dominios, como rodar API
+  + UI + Worker). CURRENT_STATE aponta para `112515a` (merge F9, PR #22).
+  Login da PR #21 (`6cb208f`) registrado no frontend. Sem mudanca de
+  contrato nem de codigo de produto.
 
 - **0.12.0** — F9 do frontend: listagem do catalogo. Rail de filtros, barra
   de resultados com contagem anunciada, ordenacao, paginacao e card com

@@ -1,178 +1,185 @@
 # Market Hub
 
-Marketplace, construido com Python e FastAPI seguindo uma
-abordagem API First.
-#repositorio: https://github.com/giordani-p/market-hub 
+Solucao full-stack do desafio de marketplace: o vendedor opera pedidos, o
+comprador conversa no contexto do item e o time de Ops atende a fila por
+prioridade, com notificacao in-app e e-mail simulado quando a prioridade
+efetiva vira `high` ou `critical`.
 
+Repositorio: https://github.com/giordani-p/market-hub
 
-O foco principal da aplicacao e a jornada do Vendedor. A P3 materializa essa
-jornada na API: o Seller lista, detalha, avanca e cancela os proprios Order
-Items. A P4 adiciona Communication entre Buyer e Seller por Order Item.
-A P5.1 adiciona o papel Ops e InternalComment operacional.
-A P5.2 adiciona prioridade na Conversation e a fila Ops.
-A P5.3, especificada em [`docs/P5.3_Closure_Verification.md`](docs/P5.3_Closure_Verification.md),
-fecha e verifica a P5. A P6.1, especificada em
-[`docs/P6.1_Foundation_Worker.md`](docs/P6.1_Foundation_Worker.md), adiciona Jobs em
-background e o recalculo periodico de prioridade. A P6.2, especificada em
-[`docs/P6.2_Notification.md`](docs/P6.2_Notification.md), adiciona Notifications
-in-app sobre essa fundacao. A P7, especificada em
-[`docs/P7_Dashboard.md`](docs/P7_Dashboard.md), adiciona
-`GET /v1/dashboard` como visao de leitura por papel.
+O detalhe de contratos, decisoes e o que ficou fora de escopo esta em
+[`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md).
 
-## Escopo atual (P7)
+## Stack
 
-A v0 implementou o **Catalogo**. A P2 adicionou **Order**, JWT e estoque
-atomico. A P3, especificada em [`docs/P3_Seller_Journey.md`](docs/P3_Seller_Journey.md),
-expoe a operacao do Seller sobre Order Items. A P4, especificada em
-[`docs/P4_Communication.md`](docs/P4_Communication.md), adiciona Conversation e
-Messages. A P5.1, especificada em [`docs/P5.1_Support_Ops.md`](docs/P5.1_Support_Ops.md),
-adiciona Ops em `/v1/ops` e InternalComment. A P5.2, especificada em
-[`docs/P5.2_Priority_Policy.md`](docs/P5.2_Priority_Policy.md), calcula prioridade
-e expoe a fila de Conversations OPEN. A P5.3 confirma o fechamento da P5.
-A P6.1 adiciona Worker SQS, EventBridge Rule local e reconcilacao periodica
-de prioridade. A P6.2 adiciona Notifications in-app (status para Buyer+Seller,
-prioridade efetiva para Seller+Ops). A P7 adiciona `GET /v1/dashboard` para
-Buyer, Seller e Ops, sem persistencia propria. Sem realtime.
+- Backend: **Python 3.12** + FastAPI, SQLAlchemy, Alembic, JWT
+- Frontend: React + TypeScript (Vite)
+- Dados: PostgreSQL 16
+- Jobs (opcional): Worker Python + SQS no LocalStack
 
-O estado atual do codigo esta em [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md).
+## O que o produto faz
 
-## Dominio
+Tres papeis, um login. Nao ha cadastro publico: os usuarios vem da seed.
 
-```text
-   Produto ──1:N──▶ Oferta ◀──N:1── Vendedor
-                         │
-                         ▼
-                      Order Item ◀──N:1── Order ◀── Buyer (User)
-                           │
-                           ▼
-                     Conversation ──1:N──▶ Message
-                           │
-                           ▼
-                     InternalComment (Seller e Ops)
+- **Entrada**: `/login` (marca, beneficios da operacao, validacao em
+  portugues).
+- **Buyer**: catalogo em `/catalog` com busca (nome e descricao), faixa de
+  preco, somente disponiveis, ordenacao (menor preco, maior preco, nome) e
+  paginacao de 24 — filtros na URL. O card mostra o menor preco e em quantas
+  lojas o produto esta; sem oferta compravel, "Sem estoque". Checkout,
+  pedidos, conversa no Order Item, cancelamento em `placed`/`preparing`.
+  Inicio em `/buyer`.
+- **Seller** (foco operacional): dashboard, pedidos com filtro e busca,
+  avancar e cancelar status, conversa Buyer↔Seller, comentarios internos
+  com Ops, CRUD de ofertas e produtos em `/seller/offers`, prioridade
+  efetiva da conversa.
+- **Ops**: dashboard, fila de conversas `open` por prioridade
+  (`critical > high > medium > low`), override `critical`, Order Items
+  globais, comentarios internos. Ops **nao** le Messages (privacidade).
+- **Transversal**: JWT, notificacoes in-app (sino, marcar lidas, deep link)
+  e e-mail simulado no log do Worker quando `effective_priority` vira
+  `high` ou `critical`.
+
+Fora de escopo: pagamento, entrega, cadastro publico, realtime/WebSocket,
+SMTP real, Slack/SMS, filtro de catalogo no servidor, categoria e imagem
+de produto (nao existem no dominio).
+
+## Dominios
+
+Catalog (Produto/Oferta) alimenta Orders. O **Order Item** e o contexto da
+Communication (Buyer↔Seller) e do Support (Seller↔Ops + fila por
+prioridade). Notifications e o Job apos o commit. Dashboard so le, sem
+persistencia propria. Jobs/SQS sao infra — citados na stack, nao neste
+mapa.
+
+```mermaid
+flowchart LR
+  subgraph actors [Papeis]
+    Buyer
+    Seller
+    Ops
+  end
+
+  Auth[Auth]
+  Catalog[Catalog]
+  Orders[Orders]
+  Comm[Communication]
+  Support[Support]
+  Notif[Notifications]
+  Dash[Dashboard]
+
+  Buyer --> Auth
+  Seller --> Auth
+  Ops --> Auth
+  Auth --> Catalog
+  Catalog --> Orders
+  Orders --> Comm
+  Orders --> Support
+  Comm --> Support
+  Orders --> Notif
+  Comm --> Notif
+  Support --> Notif
+  Auth --> Dash
 ```
-
-- **Oferta** concentra preco, estoque e disponibilidade atuais.
-- **Order** agrupa itens de um Buyer; um pedido pode ter itens de varios Sellers.
-- **Order Item** congela `purchase_price`, guarda `quantity` e o `status`.
-- **Conversation** liga Buyer e Seller a um Order Item (no maximo uma `open`)
-  e guarda `calculated_priority` / `ops_override`.
-- **InternalComment** liga Seller e Ops ao mesmo Order Item, sem Conversation.
-- Escritas de Offer e Order Item usam o Seller do JWT. Checkout usa o Buyer do JWT.
-  Ops nao herda essas escritas; opera em `/v1/ops`.
-- `make seed` popula um marketplace de demonstracao (20 users, catalogo, pedidos
-  e jornadas). Os testes usam so a identidade minima (Loja A, Loja B, Buyer Demo,
-  Ops Demo).
 
 ## Requisitos
 
 - Python 3.12 ou superior
 - [uv](https://docs.astral.sh/uv/)
 - Docker, para o Postgres local, o LocalStack e o Worker
+- Node 20 ou superior, para o frontend
 
 ## Como executar
 
+1. Copie o exemplo de ambiente e preencha Postgres, `JWT_SECRET` e
+   `SEED_PASSWORD`. `CORS_ORIGINS` ja inclui `http://localhost:5173`.
+
 ```bash
-cp .env.example .env   # preencha Postgres, JWT_SECRET e SEED_PASSWORD
-make install
-make reset             # recria o volume do Postgres, aplica migrations e a seed completa
-make run
+cp .env.example .env
 ```
 
-`make reset` executa `docker compose down -v`, sobe o Postgres, `make migrate` e
-`make seed`. Apaga **todos** os dados locais do Postgres (app e banco de teste).
-`make db-down` so derruba os containers e **nao** apaga o volume.
+Variaveis: `DATABASE_URL`, `TEST_DATABASE_URL`, `POSTGRES_USER`,
+`POSTGRES_PASSWORD`, `POSTGRES_DB`, `JWT_SECRET`, `SEED_PASSWORD`. O
+arquivo `.env` nunca e commitado, nem qualquer valor de credencial.
 
-Ambiente que ja tem o banco: `make migrate` e `make seed` (a seed e idempotente).
-Passo a passo equivalente ao reset: `make db-up`, `make migrate`, `make seed`.
+2. Backend:
 
-A API sobe em `http://localhost:8000` e as rotas ficam sob o prefixo `/v1`.
+```bash
+make install
+make reset             # recria o volume do Postgres, aplica migrations e a seed completa
+make run               # http://localhost:8000  — rotas em /v1, docs em /docs
+```
 
-Para o Worker e a reconcilacao periodica (LocalStack + SQS):
+`make reset` executa `docker compose down -v`, sobe o Postgres, `make migrate`
+e `make seed`. Apaga **todos** os dados locais do Postgres (app e banco de
+teste). `make db-down` so derruba os containers e **nao** apaga o volume.
+
+Ambiente que ja tem o banco: `make migrate` e `make seed` (a seed e
+idempotente). Equivalente ao reset: `make db-up`, `make migrate`, `make seed`.
+
+3. Frontend (segundo terminal):
+
+```bash
+cd frontend
+npm install
+npm run dev            # http://localhost:5173
+```
+
+A API default do cliente e `http://localhost:8000/v1`. Defina
+`VITE_API_BASE_URL` so se a API nao estiver nesse endereco.
+
+4. Worker (opcional — reconcilacao de prioridade e e-mail simulado):
 
 ```bash
 make jobs-up           # sobe Postgres, LocalStack e o Worker
 make enqueue-reconcile # publica RECONCILE_PRIORITIES na hora, sem esperar 15 min
+docker compose logs -f worker
 ```
 
-`make jobs-up` **nao** entra no `reset`: rode depois se quiser LocalStack e Worker
-(as filas sao recriadas; o Worker ja ve o banco populado).
+`make jobs-up` **nao** entra no `reset`: rode depois se quiser LocalStack e
+Worker (as filas sao recriadas; o Worker ja ve o banco populado).
 
 O e-mail de alerta (prioridade `high`/`critical`) e simulado no log do
-Worker, nao na API (`docker compose logs -f worker`). Destinatario extra
-opcional: `NOTIFICATION_EMAIL_EXTRA_TO` no `.env`; reinicie o Worker depois
-de mudar.
+Worker, nao na API. Destinatario extra opcional:
+`NOTIFICATION_EMAIL_EXTRA_TO` no `.env`; reinicie o Worker depois de mudar.
 
-A Rule do EventBridge dispara a cada 15 minutos. Para conferir a DLQ, publique
-uma mensagem invalida na fila e receba-a ate `JOBS_MAX_RECEIVE_COUNT` (3).
-`make test` nao sobe LocalStack.
+A Rule do EventBridge no LocalStack e mock e **nao** dispara a fila; no AWS
+real o mapeamento continua Scheduler → SQS. Use `make enqueue-reconcile`
+para nao esperar 15 minutos. `make test` nao sobe LocalStack.
 
-Login canonico: `POST /v1/auth/login` com `loja-a@example.com`,
-`loja-b@example.com`, `buyer@example.com` ou `ops@example.com` e a senha de
-`SEED_PASSWORD`. A seed completa cria outros users `*@example.com` (sellers e
-buyers extras) com a mesma senha. Loja A, Buyer Demo e Ops Demo ja entram com
-pedidos, conversas e notificacoes para percorrer as jornadas.
+### Contas de demonstracao
 
-## Persistencia
+Senha de todos: o valor de `SEED_PASSWORD`.
 
-PostgreSQL com SQLAlchemy e migrations via Alembic. O banco local vem do
-`docker-compose.yml` e as credenciais saem de variaveis de ambiente — nao ha
-valor de credencial no repositorio.
+| Papel  | E-mail                 | Para explorar                                      |
+| ------ | ---------------------- | -------------------------------------------------- |
+| Seller | `loja-a@example.com`   | pedidos, conversas, notificacoes, ofertas          |
+| Seller | `loja-b@example.com`   | segundo vendedor                                   |
+| Buyer  | `buyer@example.com`    | catalogo, pedidos, conversa                        |
+| Ops    | `ops@example.com`      | fila e override `critical`                         |
 
-Para criar uma migration depois de alterar os modelos:
+A seed completa cria 20 users (8 sellers, 11 buyers, 1 ops), 32 produtos,
+ofertas, pedidos em todos os status e jornadas. Os demais e-mails seguem
+`*@example.com` com a mesma senha. Loja A, Buyer Demo e Ops Demo ja entram
+com pedidos, conversas e notificacoes. Os testes usam so a identidade
+minima (Loja A, Loja B, Buyer Demo, Ops Demo).
 
-```bash
-make revision m="create catalog tables"
-make migrate
-```
+## Testes
 
-## Como executar os testes
-
-Os testes usam o mesmo Postgres do `docker-compose`, no banco indicado por
-`TEST_DATABASE_URL`. Preencha essa variavel no `.env` e suba o banco antes de
-testar.
+Os testes de backend usam o mesmo Postgres do `docker-compose`, no banco
+indicado por `TEST_DATABASE_URL`. Suba o banco antes de testar.
 
 ```bash
-make db-up         # sobe o Postgres e cria o banco de teste
-make test          # suíte completa
-make lint          # ruff (lint e formatacao)
+make db-up && make test && make lint   # backend (Postgres no ar; sem LocalStack)
+cd frontend && npm test && npm run lint
 ```
 
-## Documentacao da API
+Contrato da API escrito a mao: [`api/openapi.yaml`](api/openapi.yaml).
+Documentacao interativa: `http://localhost:8000/docs`.
 
-- Documentacao interativa gerada pelo FastAPI: `http://localhost:8000/docs`
-- Contrato OpenAPI escrito a mao: [`api/openapi.yaml`](api/openapi.yaml)
+## Onde ler mais
 
-O contrato em `api/openapi.yaml` e a fonte da verdade e e escrito **antes** da
-implementacao. O fluxo de qualquer mudanca na API e:
-
-1. editar `api/openapi.yaml` e revisar o contrato;
-2. implementar as rotas e os schemas em `app/`;
-3. rodar `make test` — `tests/integration/test_openapi_contract.py` falha se a
-   implementacao divergir do contrato.
-
-## Organizacao do codigo
-
-| Caminho | Responsabilidade |
-| --- | --- |
-| `api/openapi.yaml` | contrato da API, fonte da verdade |
-| `app/main.py` | montagem da aplicacao FastAPI |
-| `app/core/` | configuracao, erros de negocio e eventos in-memory |
-| `app/database.py` | engine, sessao e publicacao de eventos apos commit |
-| `app/health.py` | health check |
-| `app/auth/` | login, JWT e seed de users |
-| `app/catalog/` | rotas, schemas, modelos, seed de identidade e catalogo demo |
-| `app/orders/` | checkout, listagem operacional do Seller, status, cancelamento e seed de pedidos |
-| `app/communication/` | Conversation, Messages, encerramento por inatividade, prioridade e reconcilacao |
-| `app/support/` | listagem Ops, InternalComment, fila e override critical |
-| `app/jobs/` | fundacao de Jobs, Worker SQS e enqueue |
-| `infra/local/` | provisionamento LocalStack |
-| `migrations/` | migrations do Alembic |
-| `tests/` | testes de unidade e de integracao |
-
-O codigo e organizado por dominio: cada dominio novo entra como um modulo
-proprio em `app/`, com suas rotas, schemas e regras.
-
-## Configuracao
-
-Toda a configuracao vem de variaveis de ambiente, descritas em `.env.example`.
-O arquivo `.env` nunca e commitado, nem qualquer valor de credencial.
+- Estado, contratos e decisoes: [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md)
+- Produto e dominios: [`docs/Project_Context.md`](docs/Project_Context.md)
+- Enunciado do desafio: [`docs/challenge.md`](docs/challenge.md)
+- Frontend (estrutura, tokens, primitivos): [`frontend/README.md`](frontend/README.md)
