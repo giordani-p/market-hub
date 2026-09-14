@@ -25,7 +25,7 @@ export function OrderDetailPage() {
       <h1>Pedido #{order.id.slice(0, 8)}</h1>
       <p className="text-muted">Criado em {formatDate(order.created_at)}</p>
       <Card>
-        <OrderItemsTable items={order.items} />
+        <OrderItemsTable items={order.items} orderId={order.id} />
       </Card>
     </div>
   )

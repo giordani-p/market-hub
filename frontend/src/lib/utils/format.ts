@@ -10,6 +10,14 @@ export function formatDate(value: string): string {
   return new Date(value).toLocaleDateString('pt-BR')
 }
 
+export function formatTime(value: string): string {
+  return new Date(value).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+}
+
+export function formatDateTime(value: string): string {
+  return `${formatDate(value)} ${formatTime(value)}`
+}
+
 /** Converte um input `<input type="date">` (yyyy-mm-dd) no inicio do dia em UTC. */
 export function toDayStartUTC(date: string): string {
   return `${date}T00:00:00Z`

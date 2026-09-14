@@ -4,6 +4,7 @@ import { Spinner } from '../../components/feedback/Spinner'
 import { ProductDetailPage } from '../../features/catalog/ProductDetailPage'
 import { ProductListPage } from '../../features/catalog/ProductListPage'
 import { LoginPage } from '../../features/auth/LoginPage'
+import { BuyerOrderItemDetailPage } from '../../features/orders/BuyerOrderItemDetailPage'
 import { OrderDetailPage } from '../../features/orders/OrderDetailPage'
 import { OrdersListPage } from '../../features/orders/OrdersListPage'
 import { SellerOrderItemDetailPage } from '../../features/seller-orders/SellerOrderItemDetailPage'
@@ -68,6 +69,10 @@ export function AppRouter() {
           <Route path="/buyer/catalog/:productId" element={<ProductDetailPage />} />
           <Route path="/buyer/orders" element={<OrdersListPage />} />
           <Route path="/buyer/orders/:orderId" element={<OrderDetailPage />} />
+          <Route
+            path="/buyer/orders/:orderId/items/:itemId"
+            element={<BuyerOrderItemDetailPage />}
+          />
           <Route path="/seller/orders" element={<SellerOrdersListPage />} />
           <Route path="/seller/orders/:itemId" element={<SellerOrderItemDetailPage />} />
           <Route path="/ops" element={<RoleHomePage role="ops" />} />
