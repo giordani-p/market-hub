@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.auth.models import User
 from app.catalog.models import Offer
-from app.catalog.seed import add_if_missing
+from app.catalog.seed import add_if_missing, add_or_replace_content
 from app.communication.models import Conversation, Message
 from app.communication.priority import calculate_priority
 from app.orders.models import Order, OrderItem
@@ -98,6 +98,9 @@ def _authors(session: Session, item: OrderItem) -> tuple[UUID, UUID]:
 
 def seed_demo_conversations(session: Session, now: datetime) -> None:
     """Insere conversations OPEN/CLOSED com prioridade da policy."""
+    item_ns = [row[1] for row in CONVERSATIONS]
+    if len(item_ns) != len(set(item_ns)):
+        raise RuntimeError("Duplicate demo conversation item_n")
     for conv_n, item_n, reason, status, created_hours, last_hours, override in CONVERSATIONS:
         item = session.get(OrderItem, item_id(item_n))
         if item is None:
@@ -127,6 +130,7 @@ def seed_demo_conversations(session: Session, now: datetime) -> None:
             ),
         )
     session.flush()
+    prefixed: set[int] = set()
     for msg_n, conv_n, author, hours_ago, content in MESSAGES:
         conversation = session.get(Conversation, conversation_id(conv_n))
         if conversation is None:
@@ -137,14 +141,18 @@ def seed_demo_conversations(session: Session, now: datetime) -> None:
         buyer_id, seller_id = _authors(session, item)
         author_id = buyer_id if author == "buyer" else seller_id
         created_at = now - timedelta(hours=hours_ago)
-        add_if_missing(
+        body = content
+        if conv_n not in prefixed:
+            body = f"Pedido #{item.number}: {content}"
+            prefixed.add(conv_n)
+        add_or_replace_content(
             session,
             Message(
                 id=message_id(msg_n),
                 conversation_id=conversation.id,
                 author_type=author,
                 author_user_id=author_id,
-                content=content,
+                content=body,
                 created_at=created_at,
             ),
         )

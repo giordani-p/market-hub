@@ -2,29 +2,29 @@ import { Search } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { UserRole } from '../../types/auth'
+import { isCompleteUuid } from '../../lib/utils/useUrlFilters'
+import { isPublicNumber } from '../../lib/utils/orderNumber'
 import styles from './GlobalSearch.module.css'
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
-/** Lista de pedidos de cada papel, destino da busca por ID. */
+/** Lista de pedidos de cada papel, destino da busca por ID ou numero. */
 const ORDER_LIST_PATH: Record<UserRole, string | null> = {
-  buyer: null,
+  buyer: '/buyer/orders',
   seller: '/seller/orders',
   ops: '/ops/order-items',
 }
 
 const PLACEHOLDER: Record<UserRole, string> = {
-  buyer: 'Buscar produto',
-  seller: 'Buscar produto ou colar ID do item',
-  ops: 'Buscar produto ou colar ID do item',
+  buyer: 'Buscar produto ou número do pedido',
+  seller: 'Buscar produto ou número do pedido',
+  ops: 'Buscar produto ou número do pedido',
 }
 
 /**
  * Busca do header.
  *
  * Nao ha endpoint de busca global no backend, entao ela despacha para a
- * tela que ja sabe filtrar: ID completo vai para a lista de pedidos do
- * papel; qualquer outro termo vai para o catalogo.
+ * tela que ja sabe filtrar: UUID vai para a lista com order_item_id;
+ * numero publico vai com number; qualquer outro termo vai para o catalogo.
  */
 export function GlobalSearch({ role }: { role: UserRole }) {
   const navigate = useNavigate()
@@ -37,8 +37,16 @@ export function GlobalSearch({ role }: { role: UserRole }) {
       return
     }
     const orderListPath = ORDER_LIST_PATH[role]
-    if (orderListPath && UUID_PATTERN.test(value)) {
+    if (orderListPath && isCompleteUuid(value)) {
+      if (role === 'buyer') {
+        navigate(`/catalog?q=${encodeURIComponent(value)}`)
+        return
+      }
       navigate(`${orderListPath}?order_item_id=${value}`)
+      return
+    }
+    if (orderListPath && isPublicNumber(value)) {
+      navigate(`${orderListPath}?number=${encodeURIComponent(value)}`)
       return
     }
     navigate(`/catalog?q=${encodeURIComponent(value)}`)

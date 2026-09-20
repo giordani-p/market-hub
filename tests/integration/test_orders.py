@@ -49,7 +49,13 @@ def test_checkout_with_items_from_two_sellers(catalog_client: TestClient) -> Non
     )
     assert response.status_code == 201, response.text
     body = response.json()
+    assert isinstance(body["number"], int)
+    assert body["number"] >= 1001
     assert len(body["items"]) == 2
+    assert {item["number"] for item in body["items"]} == {
+        f"{body['number']}-1",
+        f"{body['number']}-2",
+    }
     prices = {item["offer_id"]: item["purchase_price"] for item in body["items"]}
     assert prices[offer_a["id"]] == "299.00"
     assert prices[offer_b["id"]] == "150.00"
@@ -179,6 +185,20 @@ def test_seller_lists_only_own_order_items(catalog_client: TestClient) -> None:
     assert items_b["total"] == 1
     assert [item["order_item_id"] for item in items_a["items"]] == [id_a]
     assert [item["order_item_id"] for item in items_b["items"]] == [id_b]
+    assert items_a["items"][0]["number"] == f"{order['number']}-1"
+    assert items_b["items"][0]["number"] == f"{order['number']}-2"
+
+    by_order = catalog_client.get(
+        f"/v1/order-items?number={order['number']}",
+        headers=seller_a_headers(catalog_client),
+    ).json()
+    assert [item["order_item_id"] for item in by_order["items"]] == [id_a]
+    by_other_line = catalog_client.get(
+        f"/v1/order-items?number={order['number']}-2",
+        headers=seller_a_headers(catalog_client),
+    ).json()
+    assert by_other_line["items"] == []
+    assert by_other_line["total"] == 0
 
 
 def test_seller_cannot_advance_another_sellers_item(catalog_client: TestClient) -> None:

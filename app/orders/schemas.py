@@ -38,6 +38,7 @@ class OrderItemResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
+    number: str
     order_id: UUID
     offer_id: UUID
     quantity: int
@@ -68,6 +69,7 @@ class BuyerOrderItem(BaseModel):
     """Order Item na visao do Buyer, com o produto exibido na compra."""
 
     id: UUID
+    number: str
     order_id: UUID
     offer_id: UUID
     quantity: int
@@ -80,6 +82,7 @@ class BuyerOrderItem(BaseModel):
 
 class OrderResponse(BaseModel):
     id: UUID
+    number: int
     buyer_id: UUID
     items: list[BuyerOrderItem]
     created_at: datetime
@@ -94,11 +97,13 @@ class ProductDetailSummary(BaseModel):
 
 class OrderSummary(BaseModel):
     id: UUID
+    number: int
     created_at: datetime
 
 
 class OrderItemListItem(BaseModel):
     order_item_id: UUID
+    number: str
     product: ProductSummary
     quantity: int
     purchase_price: str
@@ -117,6 +122,7 @@ class OrderItemListResponse(BaseModel):
 
 class OrderItemDetail(BaseModel):
     id: UUID
+    number: str
     offer_id: UUID
     quantity: int
     purchase_price: str

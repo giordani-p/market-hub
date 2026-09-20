@@ -72,7 +72,7 @@ def checkout(session: Session, buyer_id: UUID, payload: CheckoutRequest) -> Orde
     session.add(order)
     session.flush()
 
-    for item, offer in valid_items:
+    for line, (item, offer) in enumerate(valid_items, start=1):
         if not _consume_stock(session, offer.id, item.quantity):
             session.refresh(offer)
             raise CheckoutRejectedError([_rejection(item, "insufficient_stock", offer)])
@@ -80,6 +80,7 @@ def checkout(session: Session, buyer_id: UUID, payload: CheckoutRequest) -> Orde
             OrderItem(
                 order_id=order.id,
                 offer_id=offer.id,
+                line=line,
                 quantity=item.quantity,
                 purchase_price=offer.price,
                 status="placed",
@@ -87,6 +88,6 @@ def checkout(session: Session, buyer_id: UUID, payload: CheckoutRequest) -> Orde
         )
 
     session.flush()
-    session.refresh(order, attribute_names=["items"])
+    session.refresh(order, attribute_names=["items", "number"])
     record_event(session, OrderCreated(order_id=order.id, buyer_id=buyer_id))
     return order

@@ -11,6 +11,7 @@ from app.auth.models import User
 from app.catalog.models import Offer, Product, Seller
 from app.catalog.schemas import format_price
 from app.orders.models import Order, OrderItem
+from app.orders.numbers import apply_public_number_filter, item_number
 from app.orders.schemas import BuyerSummary, OrderSummary, ProductDetailSummary, ProductSummary
 from app.support.access import load_ops_item_context, ops_list_statement
 from app.support.schemas import (
@@ -38,6 +39,7 @@ def _list_item(
 ) -> OpsOrderItemListItem:
     return OpsOrderItemListItem(
         order_item_id=item.id,
+        number=item_number(order.number, item.line),
         product=ProductSummary(id=product.id, name=product.name),
         quantity=item.quantity,
         purchase_price=_price(item.purchase_price),
@@ -54,6 +56,7 @@ def _detail(
 ) -> OpsOrderItemDetail:
     return OpsOrderItemDetail(
         id=item.id,
+        number=item_number(order.number, item.line),
         offer_id=item.offer_id,
         quantity=item.quantity,
         purchase_price=_price(item.purchase_price),
@@ -67,7 +70,7 @@ def _detail(
         ),
         buyer=BuyerSummary(id=buyer.id, name=buyer.name),
         seller=SellerSummary(id=seller.id, name=seller.name),
-        order=OrderSummary(id=order.id, created_at=order.created_at),
+        order=OrderSummary(id=order.id, number=order.number, created_at=order.created_at),
     )
 
 
@@ -80,6 +83,7 @@ def list_ops_order_items(
     from_: datetime | None,
     to: datetime | None,
     order_item_id: UUID | None,
+    public_number: str | None,
     seller_id: UUID | None,
 ) -> OpsOrderItemListResponse:
     stmt = ops_list_statement()
@@ -91,6 +95,7 @@ def list_ops_order_items(
         stmt = stmt.where(OrderItem.created_at <= _as_utc(to))
     if order_item_id is not None:
         stmt = stmt.where(OrderItem.id == order_item_id)
+    stmt = apply_public_number_filter(stmt, public_number)
     if seller_id is not None:
         stmt = stmt.where(Offer.seller_id == seller_id)
 

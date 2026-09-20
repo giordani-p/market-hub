@@ -417,3 +417,41 @@ def test_ops_list_filters_status_period_and_order_item_id(catalog_client: TestCl
         headers=ops,
     ).json()
     assert inverted["items"] == []
+
+
+def test_ops_filters_by_public_number(catalog_client: TestClient) -> None:
+    product = _product(catalog_client)
+    offer_a = _offer(catalog_client, product["id"], seller_a_headers(catalog_client))
+    offer_b = _offer(
+        catalog_client, product["id"], seller_b_headers(catalog_client), price="150.00"
+    )
+    order = catalog_client.post(
+        "/v1/orders",
+        json={
+            "items": [
+                {"offer_id": offer_a["id"], "quantity": 1, "expected_price": "299.00"},
+                {"offer_id": offer_b["id"], "quantity": 1, "expected_price": "150.00"},
+            ]
+        },
+        headers=buyer_headers(catalog_client),
+    ).json()
+    other = _checkout_item(catalog_client, offer_a["id"])
+    ops = ops_headers(catalog_client)
+    order_number = order["number"]
+    line_a = next(item for item in order["items"] if item["offer_id"] == offer_a["id"])
+
+    by_order = catalog_client.get(f"/v1/ops/order-items?number={order_number}", headers=ops).json()
+    assert {item["order_item_id"] for item in by_order["items"]} == {
+        item["id"] for item in order["items"]
+    }
+    assert other["id"] not in {item["order_item_id"] for item in by_order["items"]}
+
+    by_line = catalog_client.get(
+        f"/v1/ops/order-items?number={line_a['number']}", headers=ops
+    ).json()
+    assert [item["order_item_id"] for item in by_line["items"]] == [line_a["id"]]
+
+    missing = catalog_client.get("/v1/ops/order-items?number=999999", headers=ops).json()
+    assert missing["items"] == []
+    invalid = catalog_client.get("/v1/ops/order-items?number=abc", headers=ops)
+    assert invalid.status_code == 422

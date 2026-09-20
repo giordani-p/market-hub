@@ -27,4 +27,11 @@ describe('buildSellerOrderItemsQuery', () => {
     expect(params.get('from')).toBe('2026-01-01T00:00:00Z')
     expect(params.get('to')).toBe('2026-01-31T23:59:59Z')
   })
+
+  it('maps the public number filter', () => {
+    const query = buildSellerOrderItemsQuery({ number: '1042-1' })
+    const params = new URLSearchParams(query.slice(1))
+    expect(params.get('number')).toBe('1042-1')
+    expect(params.has('order_item_id')).toBe(false)
+  })
 })

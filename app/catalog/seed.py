@@ -1,6 +1,7 @@
 """Seed de vendedores e usuarios de demonstracao."""
 
 from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -24,6 +25,16 @@ def add_if_missing(session: Session, entity: object) -> bool:
         session.add(entity)
         return True
     return False
+
+
+def add_or_replace_content(session: Session, entity: Any) -> None:
+    """Insere ou atualiza `content` quando o id ja existe (Message/InternalComment)."""
+    existing = session.get(type(entity), entity.id)
+    if existing is None:
+        session.add(entity)
+        return
+    if existing.content != entity.content:
+        existing.content = entity.content
 
 
 def seed_sellers(session: Session) -> None:

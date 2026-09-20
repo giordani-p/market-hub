@@ -22,6 +22,7 @@ import { Section } from '../../components/layout/Section'
 import { InternalCommentsPanel } from '../support/InternalCommentsPanel'
 import { CONVERSATION_REASON_LABELS } from '../conversations/reasons'
 import { formatCurrencyBRL, formatDate, formatDateTime } from '../../lib/utils/format'
+import { formatOrderItemNumber } from '../../lib/utils/orderNumber'
 import { useAsync } from '../../lib/utils/useAsync'
 import type { ConversationReason } from '../../types/conversation'
 import { fetchOpsItemConversations, fetchOpsOrderItem } from './api'
@@ -64,7 +65,7 @@ export function OpsOrderItemDetailPage() {
             { term: 'Preço', value: formatCurrencyBRL(item.purchase_price) },
             {
               term: 'Pedido',
-              value: `#${item.order.id.slice(0, 8)} — ${formatDate(item.order.created_at)}`,
+              value: `${formatOrderItemNumber(item.number)} — ${formatDate(item.order.created_at)}`,
             },
           ]}
         />

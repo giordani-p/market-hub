@@ -21,6 +21,14 @@ import { PageHeader } from '../../components/layout/PageHeader'
 import { formatCurrencyBRL, formatDateTime } from '../../lib/utils/format'
 import { useAsync } from '../../lib/utils/useAsync'
 import { useDebouncedValue } from '../../lib/utils/useDebouncedValue'
+import {
+  ORDER_LOOKUP_ERROR,
+  ORDER_LOOKUP_HINT,
+  applyLookupToFilters,
+  classifyOrderLookup,
+  formatOrderItemNumber,
+  orderLookupChipLabel,
+} from '../../lib/utils/orderNumber'
 import { isCompleteUuid, useUrlFilters } from '../../lib/utils/useUrlFilters'
 import type { EffectivePriority } from '../../types/ops'
 import { fetchOpsConversationQueue } from './api'
@@ -33,7 +41,7 @@ const PRIORITY_OPTIONS = [
   ...EFFECTIVE_PRIORITIES.map((value) => ({ value, label: PRIORITY_LABELS[value] })),
 ]
 
-const FILTER_KEYS = ['effective_priority', 'seller_id', 'order_item_id']
+const FILTER_KEYS = ['effective_priority', 'seller_id', 'order_item_id', 'number']
 
 function parsePriority(value: string): EffectivePriority | '' {
   return EFFECTIVE_PRIORITIES.includes(value as EffectivePriority)
@@ -45,13 +53,14 @@ export function OpsQueuePage() {
   const filters = useUrlFilters()
   const effectivePriority = parsePriority(filters.get('effective_priority'))
   const sellerId = filters.get('seller_id')
-  const orderItemId = filters.get('order_item_id')
+  const lookupInput = filters.get('number') || filters.get('order_item_id')
   const page = Number(filters.get('page')) || 1
 
+  const lookup = classifyOrderLookup(lookupInput)
   const debouncedSellerId = useDebouncedValue(sellerId)
-  const debouncedOrderItemId = useDebouncedValue(orderItemId)
+  const debouncedLookupInput = useDebouncedValue(lookupInput)
   const sellerIdIsValid = debouncedSellerId === '' || isCompleteUuid(debouncedSellerId)
-  const orderItemIdIsValid = debouncedOrderItemId === '' || isCompleteUuid(debouncedOrderItemId)
+  const appliedLookup = classifyOrderLookup(debouncedLookupInput)
 
   const state = useAsync(
     () =>
@@ -59,15 +68,16 @@ export function OpsQueuePage() {
         page,
         pageSize: PAGE_SIZE,
         sellerId: (sellerIdIsValid && debouncedSellerId) || undefined,
-        orderItemId: (orderItemIdIsValid && debouncedOrderItemId) || undefined,
+        orderItemId: appliedLookup.status === 'uuid' ? appliedLookup.value : undefined,
+        number: appliedLookup.status === 'number' ? appliedLookup.value : undefined,
         effectivePriority: effectivePriority || undefined,
       }),
     [
       page,
       sellerIdIsValid,
       debouncedSellerId,
-      orderItemIdIsValid,
-      debouncedOrderItemId,
+      appliedLookup.status,
+      appliedLookup.value,
       effectivePriority,
     ],
   )
@@ -90,17 +100,20 @@ export function OpsQueuePage() {
       ? [
           {
             key: 'seller_id',
-            label: `Vendedor ${sellerId.slice(0, 8)}`,
+            label: items.find((item) => item.seller.id === sellerId)?.seller.name ?? 'Vendedor',
             onRemove: () => filters.set('seller_id', null),
           },
         ]
       : []),
-    ...(orderItemId
+    ...(lookupInput
       ? [
           {
-            key: 'order_item_id',
-            label: `Item ${orderItemId.slice(0, 8)}`,
-            onRemove: () => filters.set('order_item_id', null),
+            key: 'number',
+            label: orderLookupChipLabel(lookupInput),
+            onRemove: () => {
+              filters.set('number', null)
+              filters.set('order_item_id', null)
+            },
           },
         ]
       : []),
@@ -131,13 +144,13 @@ export function OpsQueuePage() {
           error={sellerIdIsValid ? undefined : 'Informe o ID completo do vendedor.'}
         />
         <TextField
-          label="Item do pedido"
-          name="order_item_id"
-          value={orderItemId}
-          onChange={(event) => filters.set('order_item_id', event.target.value || null)}
-          placeholder="00000000-0000-0000-0000-000000000000"
-          hint="Cole o ID completo do item."
-          error={orderItemIdIsValid ? undefined : 'Informe o ID completo do item.'}
+          label="Pedido"
+          name="number"
+          value={lookupInput}
+          onChange={(event) => applyLookupToFilters(filters.set, event.target.value)}
+          placeholder="1042 ou 1042-1"
+          hint={ORDER_LOOKUP_HINT}
+          error={lookup.status === 'invalid' ? ORDER_LOOKUP_ERROR : undefined}
         />
       </FilterBar>
 
@@ -162,6 +175,7 @@ export function OpsQueuePage() {
             <TableHead>
               <TableRow>
                 <TableHeaderCell>Prioridade</TableHeaderCell>
+                <TableHeaderCell>Pedido</TableHeaderCell>
                 <TableHeaderCell>Produto</TableHeaderCell>
                 <TableHeaderCell>Vendedor</TableHeaderCell>
                 <TableHeaderCell>Comprador</TableHeaderCell>
@@ -176,6 +190,7 @@ export function OpsQueuePage() {
                   <TableCell label="Prioridade">
                     <PriorityBadge priority={item.effective_priority} />
                   </TableCell>
+                  <TableCell label="Pedido">{formatOrderItemNumber(item.number)}</TableCell>
                   <TableCell label="Produto">
                     <TableRowLink to={`/ops/conversations/${item.id}`}>
                       {item.product.name}

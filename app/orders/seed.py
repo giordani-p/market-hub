@@ -3,6 +3,7 @@
 from datetime import datetime, timedelta
 from uuid import UUID
 
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from app.auth.seed import (
@@ -36,6 +37,15 @@ BUYERS = {
     "isabel": BUYER_ISABEL_ID,
     "joao": BUYER_JOAO_ID,
 }
+
+# Pedido 1 → #1001. Usado no INSERT e em public_item_number para nao divergir.
+DEMO_ORDER_NUMBER_OFFSET = 1000
+
+
+def demo_order_number(order_n: int) -> int:
+    """Numero publico do pedido de demo (order_n 1 → 1001)."""
+    return DEMO_ORDER_NUMBER_OFFSET + order_n
+
 
 # order_n, buyer_key, hours_ago, ((item_n, offer_n, qty, status, cancelled_from), ...)
 # cancelled_from so e usado quando status=cancelled; in_transit consome estoque.
@@ -281,12 +291,53 @@ ORDERS: tuple[tuple[int, str, int, tuple[tuple[int, int, int, str, str | None], 
 )
 
 
-def order_id(n: int) -> UUID:
-    return UUID(f"01000003-0000-4000-8000-{n:012x}")
+def order_id(order_n: int) -> UUID:
+    """UUID de demo determinado pelo pedido (order_n 1 → ...0001)."""
+    return UUID(f"01000003-0000-4000-8000-{order_n:012x}")
 
 
-def item_id(n: int) -> UUID:
-    return UUID(f"01000004-0000-4000-8000-{n:012x}")
+def _item_placement(item_n: int) -> tuple[int, int]:
+    """Posicao do item na tabela ORDERS: (order_n, line)."""
+    for order_n, _buyer, _hours, items in ORDERS:
+        for line, (n, _offer, _qty, _status, _cancelled) in enumerate(items, start=1):
+            if n == item_n:
+                return order_n, line
+    raise RuntimeError(f"Order item {item_n} is not in the demo ORDERS table")
+
+
+def public_item_number(item_n: int) -> str:
+    """Identificador publico {pedido}-{linha} a partir da tabela ORDERS."""
+    order_n, line = _item_placement(item_n)
+    return f"{demo_order_number(order_n)}-{line}"
+
+
+def item_id(item_n: int) -> UUID:
+    """UUID de demo determinado pelo pedido e pela linha, nao pelo contador global."""
+    order_n, line = _item_placement(item_n)
+    return UUID(f"01000004-0000-4000-8000-{order_n:06x}{line:06x}")
+
+
+def assert_unique_demo_order_ids() -> None:
+    """Garante order_n, item_n, number publico e UUIDs unicos e alinhados ao pedido."""
+    order_ns = [row[0] for row in ORDERS]
+    if len(order_ns) != len(set(order_ns)):
+        raise RuntimeError("Duplicate demo order_n")
+    item_ns: list[int] = []
+    public_numbers: list[str] = []
+    item_uuids: list[UUID] = []
+    for order_n, _buyer, _hours, items in ORDERS:
+        for line, (item_n, _offer, _qty, _status, _cancelled) in enumerate(items, start=1):
+            item_ns.append(item_n)
+            public_numbers.append(f"{demo_order_number(order_n)}-{line}")
+            item_uuids.append(item_id(item_n))
+    if len(item_ns) != len(set(item_ns)):
+        raise RuntimeError("Duplicate demo item_n")
+    if len(public_numbers) != len(set(public_numbers)):
+        raise RuntimeError("Duplicate demo public item number")
+    if len(item_uuids) != len(set(item_uuids)):
+        raise RuntimeError("Duplicate demo item UUID")
+    if len({order_id(n) for n in order_ns}) != len(order_ns):
+        raise RuntimeError("Duplicate demo order UUID")
 
 
 def _consumes_stock(status: str, cancelled_from: str | None) -> bool:
@@ -307,12 +358,14 @@ def consumed_by_offer() -> dict[int, int]:
 
 def seed_demo_orders(session: Session, now: datetime) -> None:
     """Insere orders/items e grava o estoque restante das ofertas."""
+    assert_unique_demo_order_ids()
     for order_n, buyer_key, hours_ago, _items in ORDERS:
         created = now - timedelta(hours=hours_ago)
         add_if_missing(
             session,
             Order(
                 id=order_id(order_n),
+                number=demo_order_number(order_n),
                 buyer_id=BUYERS[buyer_key],
                 created_at=created,
                 updated_at=created,
@@ -321,13 +374,14 @@ def seed_demo_orders(session: Session, now: datetime) -> None:
     session.flush()
     for order_n, _buyer_key, hours_ago, items in ORDERS:
         created = now - timedelta(hours=hours_ago)
-        for item_n, offer_n, qty, status, _cancelled_from in items:
+        for line, (item_n, offer_n, qty, status, _cancelled_from) in enumerate(items, start=1):
             add_if_missing(
                 session,
                 OrderItem(
                     id=item_id(item_n),
                     order_id=order_id(order_n),
                     offer_id=offer_id(offer_n),
+                    line=line,
                     quantity=qty,
                     purchase_price=offer_price(offer_n),
                     status=status,
@@ -337,6 +391,8 @@ def seed_demo_orders(session: Session, now: datetime) -> None:
                 ),
             )
     session.flush()
+    max_number = session.scalar(select(func.max(Order.number))) or DEMO_ORDER_NUMBER_OFFSET
+    session.execute(text("SELECT setval('order_number_seq', :value)"), {"value": max_number})
     consumed = consumed_by_offer()
     for offer_n in OFFER_BY_N:
         offer = session.get(Offer, offer_id(offer_n))

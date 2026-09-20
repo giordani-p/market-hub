@@ -24,6 +24,7 @@ from app.orders.access import (
 )
 from app.orders.checkout import checkout
 from app.orders.models import Order, OrderItem
+from app.orders.numbers import PUBLIC_NUMBER_QUERY_PATTERN, apply_public_number_filter, item_number
 from app.orders.schemas import (
     BuyerOrderItem,
     BuyerSummary,
@@ -82,17 +83,19 @@ def _buyer_order_items_by_order(
     if not order_ids:
         return {}
     rows = session.execute(
-        select(OrderItem, Product)
+        select(OrderItem, Product, Order)
         .join(Offer, OrderItem.offer_id == Offer.id)
         .join(Product, Offer.product_id == Product.id)
+        .join(Order, OrderItem.order_id == Order.id)
         .where(OrderItem.order_id.in_(order_ids))
         .order_by(OrderItem.created_at)
     ).all()
     grouped: dict[UUID, list[BuyerOrderItem]] = {}
-    for item, product in rows:
+    for item, product, order in rows:
         grouped.setdefault(item.order_id, []).append(
             BuyerOrderItem(
                 id=item.id,
+                number=item_number(order.number, item.line),
                 order_id=item.order_id,
                 offer_id=item.offer_id,
                 quantity=item.quantity,
@@ -111,6 +114,7 @@ def _order_response(
 ) -> OrderResponse:
     return OrderResponse(
         id=order.id,
+        number=order.number,
         buyer_id=order.buyer_id,
         items=items_by_order.get(order.id, []),
         created_at=order.created_at,
@@ -121,6 +125,7 @@ def _order_response(
 def _list_item(item: OrderItem, product: Product, order: Order, buyer: User) -> OrderItemListItem:
     return OrderItemListItem(
         order_item_id=item.id,
+        number=item_number(order.number, item.line),
         product=ProductSummary(id=product.id, name=product.name),
         quantity=item.quantity,
         purchase_price=_price(item.purchase_price),
@@ -134,6 +139,7 @@ def _list_item(item: OrderItem, product: Product, order: Order, buyer: User) -> 
 def _detail(item: OrderItem, product: Product, order: Order, buyer: User) -> OrderItemDetail:
     return OrderItemDetail(
         id=item.id,
+        number=item_number(order.number, item.line),
         offer_id=item.offer_id,
         quantity=item.quantity,
         purchase_price=_price(item.purchase_price),
@@ -146,7 +152,7 @@ def _detail(item: OrderItem, product: Product, order: Order, buyer: User) -> Ord
             description=product.description,
         ),
         buyer=BuyerSummary(id=buyer.id, name=buyer.name),
-        order=OrderSummary(id=order.id, created_at=order.created_at),
+        order=OrderSummary(id=order.id, number=order.number, created_at=order.created_at),
     )
 
 
@@ -199,6 +205,9 @@ def list_order_items(
     from_: Annotated[datetime | None, Query(alias="from")] = None,
     to: datetime | None = None,
     order_item_id: UUID | None = None,
+    public_number: Annotated[
+        str | None, Query(alias="number", pattern=PUBLIC_NUMBER_QUERY_PATTERN)
+    ] = None,
 ) -> OrderItemListResponse:
     assert seller.seller_id is not None
     stmt = seller_list_statement(seller.seller_id)
@@ -210,6 +219,7 @@ def list_order_items(
         stmt = stmt.where(OrderItem.created_at <= _as_utc(to))
     if order_item_id is not None:
         stmt = stmt.where(OrderItem.id == order_item_id)
+    stmt = apply_public_number_filter(stmt, public_number)
 
     total = session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
     rows = session.execute(

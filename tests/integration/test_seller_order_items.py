@@ -312,3 +312,39 @@ def test_seller_cannot_operate_foreign_item(catalog_client: TestClient) -> None:
     cancel = catalog_client.post(f"/v1/order-items/{item['id']}/cancel", headers=other)
     assert patch.status_code == 404
     assert cancel.status_code == 404
+
+
+def test_filters_by_public_number(catalog_client: TestClient) -> None:
+    product_a = _product(catalog_client)
+    product_b = _product(catalog_client, name="Tenis ABC")
+    offer_a = _offer(catalog_client, product_a["id"], seller_a_headers(catalog_client), stock=5)
+    offer_b = _offer(catalog_client, product_b["id"], seller_a_headers(catalog_client), stock=5)
+    first = catalog_client.post(
+        "/v1/orders",
+        json={
+            "items": [
+                {"offer_id": offer_a["id"], "quantity": 1, "expected_price": "299.00"},
+                {"offer_id": offer_b["id"], "quantity": 1, "expected_price": "299.00"},
+            ]
+        },
+        headers=buyer_headers(catalog_client),
+    ).json()
+    second = _checkout(catalog_client, offer_a["id"])
+    seller = seller_a_headers(catalog_client)
+    order_number = first["number"]
+    first_line = next(item for item in first["items"] if item["number"] == f"{order_number}-1")
+
+    by_order = catalog_client.get(f"/v1/order-items?number={order_number}", headers=seller).json()
+    assert {item["order_item_id"] for item in by_order["items"]} == {
+        item["id"] for item in first["items"]
+    }
+    assert second["id"] not in {item["order_item_id"] for item in by_order["items"]}
+
+    by_line = catalog_client.get(f"/v1/order-items?number={order_number}-1", headers=seller).json()
+    assert [item["order_item_id"] for item in by_line["items"]] == [first_line["id"]]
+
+    missing = catalog_client.get("/v1/order-items?number=999999", headers=seller).json()
+    assert missing == {"items": [], "page": 1, "page_size": 20, "total": 0}
+
+    invalid = catalog_client.get("/v1/order-items?number=abc", headers=seller)
+    assert invalid.status_code == 422

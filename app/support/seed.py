@@ -6,7 +6,8 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.auth.seed import OPS_ID, SELLER_A_USER_ID, SELLER_ESPORTE_USER_ID, SELLER_TECH_USER_ID
-from app.catalog.seed import add_if_missing
+from app.catalog.seed import add_or_replace_content
+from app.orders.models import OrderItem
 from app.orders.seed import item_id
 from app.support.models import InternalComment
 
@@ -62,15 +63,18 @@ def comment_id(n: int) -> UUID:
 def seed_demo_comments(session: Session, now: datetime) -> None:
     """Insere InternalComments nos items de prioridade alta/critical."""
     for n, item_n, author_id, author_type, hours_ago, content in COMMENTS:
+        item = session.get(OrderItem, item_id(item_n))
+        if item is None:
+            raise RuntimeError(f"Order item {item_n} must exist before comments")
         created_at = now - timedelta(hours=hours_ago)
-        add_if_missing(
+        add_or_replace_content(
             session,
             InternalComment(
                 id=comment_id(n),
-                order_item_id=item_id(item_n),
+                order_item_id=item.id,
                 author_id=author_id,
                 author_type=author_type,
-                content=content,
+                content=f"Pedido #{item.number}: {content}",
                 created_at=created_at,
             ),
         )

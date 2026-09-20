@@ -26,6 +26,9 @@ export function buildSellerOrderItemsQuery(filters: SellerOrderItemFilters): str
   if (filters.orderItemId) {
     params.set('order_item_id', filters.orderItemId)
   }
+  if (filters.number) {
+    params.set('number', filters.number)
+  }
   const query = params.toString()
   return query ? `?${query}` : ''
 }

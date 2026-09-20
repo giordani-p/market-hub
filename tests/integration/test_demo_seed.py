@@ -8,7 +8,8 @@ from app.auth.models import User
 from app.auth.seed import BUYER_EMAIL, BUYER_ID, OPS_EMAIL, SELLER_A_EMAIL, SELLER_B_EMAIL
 from app.catalog.models import Offer, Product
 from app.catalog.seed import SELLER_A_ID, seed_demo
-from app.communication.models import Conversation
+from app.communication.models import Conversation, Message
+from app.communication.seed import message_id
 from app.orders.models import Order, OrderItem
 from tests.conftest import TEST_SEED_PASSWORD
 from tests.integration.auth_helpers import buyer_headers, ops_headers, seller_a_headers
@@ -99,3 +100,31 @@ def test_demo_dashboards_are_not_empty(catalog_client: TestClient, test_engine, 
     assert ops["attention"]["priority_queue_preview"]
     assert listed["total"] > 20
     assert len(listed["items"]) == 20
+
+
+def test_demo_seed_messages_cite_public_item_number(
+    catalog_client: TestClient, test_engine, settings
+) -> None:
+    _apply_demo(test_engine, settings.seed_password)
+    factory = sessionmaker(bind=test_engine, autoflush=False, expire_on_commit=False)
+    with factory() as session:
+        first = session.get(Message, message_id(1))
+        assert first is not None
+        assert "1003-1" in first.content
+
+
+def test_demo_seed_refreshes_message_content(
+    catalog_client: TestClient, test_engine, settings
+) -> None:
+    _apply_demo(test_engine, settings.seed_password)
+    factory = sessionmaker(bind=test_engine, autoflush=False, expire_on_commit=False)
+    with factory() as session:
+        first = session.get(Message, message_id(1))
+        assert first is not None
+        first.content = "stale"
+        session.commit()
+    _apply_demo(test_engine, settings.seed_password)
+    with factory() as session:
+        first = session.get(Message, message_id(1))
+        assert first is not None
+        assert "1003-1" in first.content

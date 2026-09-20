@@ -6,6 +6,7 @@ import { Page } from '../../components/layout/Page'
 import { PageHeader } from '../../components/layout/PageHeader'
 import { Section } from '../../components/layout/Section'
 import { formatCurrencyBRL, formatDateTime } from '../../lib/utils/format'
+import { formatOrderItemNumber, formatOrderNumber } from '../../lib/utils/orderNumber'
 import type { BuyerDashboard } from '../../types/dashboard'
 import { SummaryGrid, SummaryStat } from './SummaryStat'
 import styles from './BuyerDashboardView.module.css'
@@ -55,7 +56,7 @@ export function BuyerDashboardView({ data }: { data: BuyerDashboard }) {
               <Card key={order.order_id}>
                 <div className={styles.orderHeader}>
                   <Link to={`/buyer/orders/${order.order_id}`}>
-                    Pedido #{order.order_id.slice(0, 8)}
+                    Pedido {formatOrderNumber(order.number)}
                   </Link>
                   <span className={styles.orderMeta}>
                     {formatDateTime(order.created_at)} · {formatCurrencyBRL(order.total_amount)}
@@ -70,6 +71,7 @@ export function BuyerDashboardView({ data }: { data: BuyerDashboard }) {
                       >
                         {item.product.name}
                       </Link>
+                      <span className={styles.orderMeta}>{formatOrderItemNumber(item.number)}</span>
                       <span className={styles.orderMeta}>x{item.quantity}</span>
                       <StatusBadge status={item.status} />
                     </li>

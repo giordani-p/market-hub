@@ -27,6 +27,7 @@ export interface OpsConversation {
 }
 
 export interface OpsConversationQueueItem extends OpsConversation {
+  number: string
   seller: SellerSummary
   product: Pick<Product, 'id' | 'name'>
   buyer: BuyerSummary
@@ -46,11 +47,13 @@ export interface OpsConversationQueueFilters {
   pageSize?: number
   sellerId?: string
   orderItemId?: string
+  number?: string
   effectivePriority?: EffectivePriority
 }
 
 export interface OpsOrderItemDetail {
   id: string
+  number: string
   offer_id: string
   quantity: number
   purchase_price: string
@@ -60,11 +63,12 @@ export interface OpsOrderItemDetail {
   product: Product
   buyer: BuyerSummary
   seller: SellerSummary
-  order: { id: string; created_at: string }
+  order: { id: string; number: number; created_at: string }
 }
 
 export interface OpsOrderItemListItem {
   order_item_id: string
+  number: string
   product: Pick<Product, 'id' | 'name'>
   quantity: number
   purchase_price: string
@@ -89,5 +93,6 @@ export interface OpsOrderItemFilters {
   from?: string
   to?: string
   orderItemId?: string
+  number?: string
   sellerId?: string
 }

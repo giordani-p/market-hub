@@ -135,6 +135,7 @@ def test_ops_item_conversations_and_queue_order(catalog_client: TestClient) -> N
     assert queue["items"][0]["order_item_status"] == "placed"
     assert queue["items"][0]["purchase_price"] == "80.00"
     assert "messages" not in queue["items"][0]
+    assert queue["items"][0]["number"]
 
     catalog_client.post(
         f"/v1/conversations/{medium['id']}/close",
@@ -162,6 +163,10 @@ def test_ops_item_conversations_and_queue_order(catalog_client: TestClient) -> N
         f"/v1/ops/conversations?order_item_id={item_a['id']}", headers=ops
     ).json()
     assert [row["id"] for row in filtered_item["items"]] == [low["id"]]
+    filtered_number = catalog_client.get(
+        f"/v1/ops/conversations?number={item_a['number']}", headers=ops
+    ).json()
+    assert [row["id"] for row in filtered_number["items"]] == [low["id"]]
     too_big = catalog_client.get("/v1/ops/conversations?page_size=101", headers=ops)
     assert too_big.status_code == 422
     invalid = catalog_client.get("/v1/ops/conversations?effective_priority=urgent", headers=ops)

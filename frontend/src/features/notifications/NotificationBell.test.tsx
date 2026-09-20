@@ -247,14 +247,12 @@ describe('NotificationBell', () => {
       fetchUnreadCount
         .mockResolvedValueOnce({ unread_count: 1 })
         .mockResolvedValue({ unread_count: 2 })
-      fetchNotifications
-        .mockResolvedValueOnce(listResponse())
-        .mockResolvedValue(
-          listResponse({
-            items: [notification(), notification({ id: 'notif-2' })],
-            total: 2,
-          }),
-        )
+      fetchNotifications.mockResolvedValueOnce(listResponse()).mockResolvedValue(
+        listResponse({
+          items: [notification(), notification({ id: 'notif-2' })],
+          total: 2,
+        }),
+      )
       render(
         <MemoryRouter>
           <NotificationBell role="seller" />

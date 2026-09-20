@@ -1,7 +1,7 @@
 # Estado atual do projeto
 
-- **Versao**: 1.0.3
-- **Fase**: Solucao do desafio — COMPLETE (backend P1–P7 / P6.3 + frontend F0–F9)
+- **Versao**: 1.1.0
+- **Fase**: Solucao do desafio — COMPLETE (backend P1–P7 / P6.3 + frontend F0–F9); numero publico de Pedido
 - **Commit de referencia**: 50ed75e
 - **Repositório**: https://github.com/giordani-p/market-hub
 
@@ -76,7 +76,7 @@ do loop), sem o ticker `RECONCILE_PRIORITIES`.
 | `app/dashboard/`     | Capability de leitura `GET /v1/dashboard` (projecao Seller/Buyer/Ops)                   |
 | `api/openapi.yaml`   | contrato da API escrito a mao                                                           |
 | `infra/local/`       | provisionamento LocalStack (filas, DLQ, EventBridge Rule)                               |
-| `migrations/`        | Alembic `001`–`008` (notifications `008`)                                               |
+| `migrations/`        | Alembic `001`–`009` (numero publico de pedido `009`)                              |
 | `tests/unit/`        | testes sem aplicacao montada                                                            |
 | `tests/integration/` | testes via `TestClient` no Postgres de teste                                            |
 
@@ -131,13 +131,18 @@ Rotas implementadas, todas sob o prefixo `/v1`:
 | `GET /v1/dashboard`                                             | projecao por papel (`seller`/`buyer`/`ops`); empty state e `200`   |
 
 `GET /v1/order-items` aceita `page`, `page_size` (padrao 20, maximo 100),
-`status`, `from`, `to` e `order_item_id`. Ordenacao `created_at DESC`. Lista
-vazia responde `200` com `items`, `page`, `page_size` e `total`.
-`GET /v1/ops/order-items` usa os mesmos parametros e acrescenta `seller_id`.
-Cada item da listagem Ops inclui `seller` (`id`, `name` da tabela `sellers`).
-`GET /v1/ops/conversations` lista so `open`, ordena `critical > high > medium > low`
-e depois `last_interaction_at DESC`, e aceita `seller_id`, `order_item_id` e
+`status`, `from`, `to`, `order_item_id` (UUID) e `number` (pedido `1042` ou
+item `1042-1`). Ordenacao `created_at DESC`. Lista vazia responde `200` com
+`items`, `page`, `page_size` e `total`. `GET /v1/ops/order-items` usa os
+mesmos parametros e acrescenta `seller_id`. Cada item da listagem Ops inclui
+`seller` (`id`, `name` da tabela `sellers`). `GET /v1/ops/conversations`
+lista so `open`, ordena `critical > high > medium > low` e depois
+`last_interaction_at DESC`, e aceita `seller_id`, `order_item_id`, `number` e
 `effective_priority`. Envelope `items`/`page`/`page_size`/`total`.
+
+Order e Order Item expõem um identificador publico alem do UUID: `Order.number`
+(inteiro, sequence a partir de 1001) e `number` do item (string `{pedido}-{linha}`,
+por exemplo `1042-1`). Paths, FKs, eventos e Notifications continuam no UUID.
 
 `GET /v1/notifications` usa `page`/`page_size` (padrao 20, maximo 100),
 ordena `created_at DESC` e isola por `recipient_id` do JWT.
@@ -300,9 +305,11 @@ proprio item (F5).
 Limitacoes da UI fechada (nao sao proxima fase): Notifications por poll de
 60s no `unread-count` (abrir o dropdown busca a lista na hora), sem
 push/real-time; tabelas sem ordenacao por coluna (nenhuma rota aceita
-sort, e ordenar so a pagina atual no cliente engana); busca de vendedor ou
-item exige UUID exato. Ver `docs/FRONTEND_F9_SPEC.md` para o detalhe da
-ultima fase de UI.
+sort, e ordenar so a pagina atual no cliente engana); busca de vendedor
+exige UUID exato. Pedido/item: a UI anuncia so o numero publico (`1042` /
+`1042-1`); UUID segue valido em path e na query `order_item_id`. Buyer
+filtra `Meus pedidos` no cliente (sem query em `GET /v1/orders`). Ver
+`docs/FRONTEND_F9_SPEC.md` para o detalhe da ultima fase de UI.
 
 No catalogo, o que falta e de dominio — **fora de escopo da solucao
 fechada**, nao uma fase de backend em aberto:
@@ -363,6 +370,8 @@ fechada**, nao uma fase de backend em aberto:
 - Auth: JWT HS256, login com email e senha. Sem refresh token e sem cadastro
   publico. `seller_id` e `buyer_id` de escrita saem do JWT, nunca do body.
 - Carrinho nao e persistido: o cliente reenvia os itens no checkout.
+- `Order.number` e identificador publico sequencial (sequence a partir de 1001);
+  o item expoe `number` composto `{pedido}-{linha}`. UUID continua PK, FK e path.
 - `OrderItem.purchase_price` congela o preco; checkout compara `expected_price`.
 - Status do item: `placed` → `preparing` → `in_transit` → `delivered`, mais `cancelled`.
 - `PATCH` de Order Item nao aceita `cancelled` (422). Cancelamento e
@@ -373,7 +382,10 @@ fechada**, nao uma fase de backend em aberto:
 - Users de seed: identidade minima (Loja A, Loja B, Buyer Demo, Ops Demo) em
   `seed_all`, usada pelos testes. `make seed` acrescenta `seed_demo`: 20 users
   (8 sellers, 11 buyers, 1 ops), 32 produtos, ofertas concorrentes, pedidos em
-  todos os status e jornadas (conversas, comments, notifications). Senha em
+  todos os status e jornadas (conversas, comments, notifications). A primeira
+  mensagem de cada conversa e os comments internos citam o numero publico do
+  item (`Pedido #1003-1`). UUID do item de demo e `{order_n}{line}` no
+  sufixo, unico por pedido. Senha em
   `SEED_PASSWORD`. `User.role` e `buyer`, `seller` ou `ops`.
 - `make reset` recria o volume `postgres-data` (`docker compose down -v`), sobe
   o Postgres, aplica migrations e a seed completa. `make db-down` nao apaga o
@@ -443,7 +455,8 @@ existe no repositorio.
 ## Persistencia
 
 PostgreSQL 16 em container local, SQLAlchemy 2.0 e Alembic. Tabelas `sellers`,
-`products`, `offers`, `users` (com `name`), `orders`, `order_items`,
+`products`, `offers`, `users` (com `name`), `orders` (`number` unico, sequence
+`order_number_seq` a partir de 1001), `order_items` (`line` unico por pedido),
 `conversations`, `messages`, `internal_comments` e `notifications`.
 `conversations` tem `priority_calculated_at`; `order_items` tem
 `status_updated_at`. Testes usam `TEST_DATABASE_URL`. `make test` exige o
@@ -483,6 +496,18 @@ de produto em `112515a`. Quem for estender o que esta em
 por uma spec nova.
 
 ## Historico de versoes
+
+- **1.1.0** — Numero publico de Pedido e Item: `Order.number` sequencial a
+  partir de 1001 e item `{number}-{line}` (`1042-1`). UUID permanece PK e
+  path. Query `number` adicional (nao substitui `order_item_id`) em
+  `GET /v1/order-items`, `GET /v1/ops/order-items` e
+  `GET /v1/ops/conversations`. UI, filtros e busca global passam a usar o
+  numero; deep links de Notification continuam no UUID.
+
+- Seed de chat e UX do numero publico: mensagens/comments da demo citam
+  `#pedido-linha`; Buyer filtra Meus pedidos no cliente; copy de pedido nao
+  anuncia UUID. UUID permanece em path, FK, `entity_id` e query
+  `order_item_id`. Sem mudanca de contrato (`1.1.0`).
 
 - **1.0.3** — Health check passa a pingar o Postgres (`SELECT 1`). `GET /v1/health`
   responde `200` + `status: ok` quando o banco responde e `503` + `status: error`
