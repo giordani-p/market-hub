@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     jobs_max_receive_count: int = 3
     jobs_wait_time_seconds: int = 10
     reconcile_page_size: int = 50
-    jobs_schedule_expression: str = "rate(15 minutes)"
+    jobs_reconcile_interval_seconds: int = 60
     notification_email_extra_to: str = ""
 
     @property

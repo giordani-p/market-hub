@@ -22,6 +22,7 @@ import { resolveNotificationRoute } from './resolveRoute'
 import styles from './NotificationBell.module.css'
 
 const PAGE_SIZE = 10
+export const UNREAD_POLL_MS = 60_000
 
 export function NotificationBell({ role }: { role: UserRole }) {
   const navigate = useNavigate()
@@ -46,6 +47,8 @@ export function NotificationBell({ role }: { role: UserRole }) {
 
   useEffect(() => {
     loadUnreadCount()
+    const id = window.setInterval(loadUnreadCount, UNREAD_POLL_MS)
+    return () => window.clearInterval(id)
   }, [loadUnreadCount])
 
   // Fecha ao clicar fora ou apertar Escape -- padrao esperado de um dropdown.
@@ -86,10 +89,22 @@ export function NotificationBell({ role }: { role: UserRole }) {
       .finally(() => setLoading(false))
   }, [])
 
+  const prevUnreadRef = useRef<number | null>(null)
+  useEffect(() => {
+    if (prevUnreadRef.current === null) {
+      prevUnreadRef.current = unreadCount
+      return
+    }
+    if (open && unreadCount > prevUnreadRef.current) {
+      loadNotifications(1)
+    }
+    prevUnreadRef.current = unreadCount
+  }, [unreadCount, open, loadNotifications])
+
   function handleToggle() {
     const next = !open
     setOpen(next)
-    if (next && notifications === null) {
+    if (next) {
       loadNotifications(1)
     }
   }

@@ -1,9 +1,9 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { AppNotification, NotificationListResponse } from '../../types/notification'
-import { NotificationBell } from './NotificationBell'
+import { NotificationBell, UNREAD_POLL_MS } from './NotificationBell'
 
 const {
   fetchUnreadCount,
@@ -191,5 +191,87 @@ describe('NotificationBell', () => {
     await user.keyboard('{Escape}')
 
     expect(screen.queryByText('Status do pedido atualizado')).not.toBeInTheDocument()
+  })
+
+  it('reloads the list every time the dropdown opens', async () => {
+    fetchUnreadCount.mockResolvedValue({ unread_count: 1 })
+    fetchNotifications.mockResolvedValue(listResponse())
+    render(
+      <MemoryRouter>
+        <NotificationBell role="seller" />
+      </MemoryRouter>,
+    )
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /notificaç/i }))
+    await screen.findByText('Status do pedido atualizado')
+    await user.keyboard('{Escape}')
+    expect(screen.queryByText('Status do pedido atualizado')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /notificaç/i }))
+    expect(await screen.findByText('Status do pedido atualizado')).toBeInTheDocument()
+    expect(fetchNotifications).toHaveBeenCalledTimes(2)
+  })
+
+  describe('unread poll', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('updates the badge on the interval and stops after unmount', async () => {
+      vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+      fetchUnreadCount
+        .mockResolvedValueOnce({ unread_count: 1 })
+        .mockResolvedValue({ unread_count: 4 })
+      const { unmount } = render(
+        <MemoryRouter>
+          <NotificationBell role="seller" />
+        </MemoryRouter>,
+      )
+
+      expect(await screen.findByText('1')).toBeInTheDocument()
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(UNREAD_POLL_MS)
+      })
+      expect(await screen.findByText('4')).toBeInTheDocument()
+
+      unmount()
+      fetchUnreadCount.mockClear()
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(UNREAD_POLL_MS)
+      })
+      expect(fetchUnreadCount).not.toHaveBeenCalled()
+    })
+
+    it('reloads the open dropdown when unread count increases', async () => {
+      vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+      fetchUnreadCount
+        .mockResolvedValueOnce({ unread_count: 1 })
+        .mockResolvedValue({ unread_count: 2 })
+      fetchNotifications
+        .mockResolvedValueOnce(listResponse())
+        .mockResolvedValue(
+          listResponse({
+            items: [notification(), notification({ id: 'notif-2' })],
+            total: 2,
+          }),
+        )
+      render(
+        <MemoryRouter>
+          <NotificationBell role="seller" />
+        </MemoryRouter>,
+      )
+      expect(await screen.findByText('1')).toBeInTheDocument()
+
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      await user.click(screen.getByRole('button', { name: /notificaç/i }))
+      await screen.findByText('Status do pedido atualizado')
+      expect(fetchNotifications).toHaveBeenCalledTimes(1)
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(UNREAD_POLL_MS)
+      })
+      await waitFor(() => expect(fetchNotifications).toHaveBeenCalledTimes(2))
+      expect(await screen.findByText('2')).toBeInTheDocument()
+    })
   })
 })

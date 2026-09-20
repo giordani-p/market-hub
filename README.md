@@ -15,7 +15,7 @@ O detalhe de contratos, decisões e o que ficou fora de escopo está em
 - Backend: **Python 3.12** + FastAPI, SQLAlchemy, Alembic, JWT
 - Frontend: React + TypeScript (Vite)
 - Dados: PostgreSQL 16
-- Jobs (opcional): Worker Python + SQS no LocalStack
+- Jobs: Worker Python + SQS no LocalStack (necessario para notificacoes)
 
 ## O que o produto faz
 
@@ -128,24 +128,28 @@ npm run dev            # http://localhost:5173
 A API default do cliente é `http://localhost:8000/v1`. Defina
 `VITE_API_BASE_URL` só se a API não estiver nesse endereço.
 
-4. Worker (opcional — reconciliação de prioridade e e-mail simulado):
+4. Worker (necessario para o sino in-app e para o envelhecimento de prioridade):
 
 ```bash
 make jobs-up           # sobe Postgres, LocalStack e o Worker
-make enqueue-reconcile # publica RECONCILE_PRIORITIES na hora, sem esperar 15 min
-docker compose logs -f worker
+make enqueue-reconcile # publica RECONCILE_PRIORITIES na hora, sem esperar o ticker
+make worker-logs       # NOTIFY e e-mail; sem o ticker RECONCILE
 ```
 
-`make jobs-up` **não** entra no `reset`: rode depois se quiser LocalStack e
-Worker (as filas são recriadas; o Worker já vê o banco populado).
+Sem o Worker, a API grava o pedido e responde `200`, mas a Notification nao
+existe — o enqueue na SQS falha e o erro aparece no log da API. `make jobs-up`
+**nao** entra no `reset`: rode depois (as filas sao recriadas; o Worker ja ve
+o banco populado).
 
-O e-mail de alerta (prioridade `high`/`critical`) é simulado no log do
-Worker, não na API. Destinatário extra opcional:
+O Worker publica `RECONCILE_PRIORITIES` a cada 60s
+(`JOBS_RECONCILE_INTERVAL_SECONDS`; `0` desliga). A Rule do EventBridge no
+LocalStack e mock e **nao** dispara a fila; no AWS real o mapeamento continua
+Scheduler → SQS e o ticker deve ir a `0`. `make enqueue-reconcile` dispara
+na hora. `make test` nao sobe LocalStack.
+
+O e-mail de alerta (prioridade `high`/`critical`) e simulado no log do
+Worker, nao na API. Destinatario extra opcional:
 `NOTIFICATION_EMAIL_EXTRA_TO` no `.env`; reinicie o Worker depois de mudar.
-
-A Rule do EventBridge no LocalStack é mock e **não** dispara a fila; no AWS
-real o mapeamento continua Scheduler → SQS. Use `make enqueue-reconcile`
-para não esperar 15 minutos. `make test` não sobe LocalStack.
 
 ### Contas de demonstração
 
@@ -181,5 +185,4 @@ Documentação interativa: `http://localhost:8000/docs`.
 
 - Estado, contratos e decisões: [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md)
 - Produto e domínios: [`docs/Project_Context.md`](docs/Project_Context.md)
-- Enunciado do desafio: [`docs/challenge.md`](docs/challenge.md)
 - Frontend (estrutura, tokens, primitivos): [`frontend/README.md`](frontend/README.md)
