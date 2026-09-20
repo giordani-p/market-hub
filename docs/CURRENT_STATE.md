@@ -1,6 +1,6 @@
 # Estado atual do projeto
 
-- **Versao**: 1.0.2
+- **Versao**: 1.0.3
 - **Fase**: Solucao do desafio — COMPLETE (backend P1–P7 / P6.3 + frontend F0–F9)
 - **Commit de referencia**: 50ed75e
 - **Repositório**: https://github.com/giordani-p/market-hub
@@ -65,7 +65,7 @@ do loop), sem o ticker `RECONCILE_PRIORITIES`.
 | `app/core/errors.py` | `DomainError` e subclasses, inclusive `CheckoutRejectedError`                           |
 | `app/core/events.py` | dataclasses de evento e `InMemoryEventPublisher`                                        |
 | `app/database.py`    | `Base`, engine, `session_transaction()` (commit + publish)                              |
-| `app/health.py`      | router e schema do health check                                                         |
+| `app/health.py`      | router e schema do health check; ping `SELECT 1` no Postgres                             |
 | `app/auth/`          | `User` (com `name` e `role` buyer/seller/ops), login, `/me`, JWT, seed                  |
 | `app/catalog/`       | modelos, schemas, CRUD de Produto/Oferta, seed de identidade e catalogo demo            |
 | `app/orders/`        | checkout, listagem/detalhe do Seller, status, cancelamento e seed de pedidos demo       |
@@ -86,7 +86,7 @@ Rotas implementadas, todas sob o prefixo `/v1`:
 
 | Rota                                                            | Resposta                                                           |
 | --------------------------------------------------------------- | ------------------------------------------------------------------ |
-| `GET /v1/health`                                                | `HealthResponse` (`status`, `version`)                             |
+| `GET /v1/health`                                                | `HealthResponse` (`status` `ok`/`error`, `version`); `503` se o Postgres nao responder |
 | `POST /v1/auth/login`                                           | `TokenResponse`; `401 unauthorized` se a senha falhar              |
 | `GET /v1/auth/me`                                               | `User` autenticado, inclusive `name`                               |
 | `GET /v1/products`                                              | array de `Product`                                                 |
@@ -483,6 +483,11 @@ de produto em `112515a`. Quem for estender o que esta em
 por uma spec nova.
 
 ## Historico de versoes
+
+- **1.0.3** — Health check passa a pingar o Postgres (`SELECT 1`). `GET /v1/health`
+  responde `200` + `status: ok` quando o banco responde e `503` + `status: error`
+  quando nao. `status` e enum `ok`/`error`. Versao publica da API alinhada em
+  `app.__version__`, `pyproject.toml`, `uv.lock` e `api/openapi.yaml` (`1.0.3`).
 
 - **1.0.2** — Worker SQS: timeout HTTP do long poll maior que
   `JOBS_WAIT_TIME_SECONDS`; enqueue da API permanece curto. `make jobs-up`
