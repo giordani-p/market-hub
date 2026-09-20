@@ -1,18 +1,18 @@
 # Estado atual do projeto
 
-- **Versao**: 1.0.0
+- **Versao**: 1.0.2
 - **Fase**: Solucao do desafio — COMPLETE (backend P1–P7 / P6.3 + frontend F0–F9)
-- **Commit de referencia**: 112515a
+- **Commit de referencia**: 50ed75e
 - **Repositório**: https://github.com/giordani-p/market-hub
 
 ## Do que se trata
 
-Solucao full-stack do desafio Market Hub no commit `112515a`: backend em
+Solucao full-stack do desafio Market Hub no commit `50ed75e`: backend em
 **Python** + FastAPI, organizado por dominio em `app/`, e UI React por papel
-em `frontend/`. Cobre os tres objetivos de [`docs/challenge.md`](challenge.md):
-pedidos do vendedor, conversas por Order Item com fila Ops por prioridade, e
-notificacao in-app mais e-mail simulado no Worker quando `effective_priority`
-vira `high` ou `critical`.
+em `frontend/`. Cobre os tres objetivos do desafio: pedidos do vendedor,
+conversas por Order Item com fila Ops por prioridade, e notificacao in-app
+mais e-mail simulado no Worker quando `effective_priority` vira `high` ou
+`critical`.
 
 O backend fechou em P7 (`GET /v1/dashboard`) com o canal de e-mail da P6.3.
 O frontend fechou em F9 (listagem do catalogo), com o login da PR #21 na
@@ -26,9 +26,9 @@ Aplicacao FastAPI unica, organizada por dominio e nao por camada tecnica. Nao
 ha Clean Architecture nem Hexagonal. Cada dominio entra como um modulo proprio
 em `app/`.
 
-`app/core/` guarda o que e transversal: configuracao, erros de negocio, eventos
-em memoria e traducao para HTTP. `app/jobs/` e infra transversal de Jobs, nao
-um dominio de produto.
+`app/core/` guarda o que e transversal: configuracao, logging, erros de
+negocio, eventos em memoria e traducao para HTTP. `app/jobs/` e infra
+transversal de Jobs, nao um dominio de produto.
 
 Eventos de dominio (`OrderCreated`, `OrderItemStatusChanged`,
 `OrderItemCancelled`, `ConversationCreated`, `MessageCreated`,
@@ -38,14 +38,22 @@ apos o `commit` da sessao. Eventos notificaveis enfileiram
 `NOTIFY_STATUS_CHANGE` na mesma fila SQS; falha nesse publish nao desfaz o
 commit (sem Outbox). Nao ha bus, Kafka nem Redis.
 
-Jobs de background usam SQS no LocalStack. Uma EventBridge Rule
-(`rate(15 minutes)`) publica `RECONCILE_PRIORITIES` na fila `market-hub-jobs`.
-Um Worker em processo separado consome um Job por vez. Falhas nao deletam a
-mensagem; apos `maxReceiveCount` (3) ela vai para `market-hub-jobs-dlq`. O
-EventBridge Scheduler do LocalStack e mock e nao dispara fila; no AWS real o
-mapeamento continua Scheduler → SQS. Recalculo por evento de dominio nao existe:
-a fila Ops pode ficar ate cerca de 15 minutos defasada. E-mail de alerta
-(`high`/`critical`) e logado no stdout desse Worker, nao na API.
+Jobs de background usam SQS no LocalStack. O Worker consome um Job por vez
+e, localmente, publica `RECONCILE_PRIORITIES` a cada 60s
+(`JOBS_RECONCILE_INTERVAL_SECONDS`; `0` desliga o ticker). Uma EventBridge
+Rule local descreve o mesmo relogio na AWS (a expressao e derivada dos
+segundos); no LocalStack ela e mock e nao dispara a fila. Falhas nao
+deletam a mensagem; apos `maxReceiveCount` (3) ela vai para
+`market-hub-jobs-dlq`. Recalculo por evento de dominio nao existe: a fila
+Ops pode ficar ate cerca de 60s defasada. E-mail de alerta
+(`high`/`critical`) e logado no stdout desse Worker, nao na API. A API
+configura o mesmo formato de log do Worker; falha ao enfileirar
+`NOTIFY_STATUS_CHANGE` nao desfaz o commit (sem Outbox), mas aparece no
+stdout. O enqueue da API usa timeout HTTP curto (2s/5s) para nao travar o
+request; o Worker usa `read_timeout = JOBS_WAIT_TIME_SECONDS + 5` no long
+poll. `make jobs-up` rebuilda a imagem (`COPY app` no Dockerfile).
+`make worker-logs` segue o stdout do Worker filtrado (NOTIFY, e-mail, erro
+do loop), sem o ticker `RECONCILE_PRIORITIES`.
 
 ## Mapa do codigo
 
@@ -53,6 +61,7 @@ a fila Ops pode ficar ate cerca de 15 minutos defasada. E-mail de alerta
 | -------------------- | --------------------------------------------------------------------------------------- |
 | `app/main.py`        | `create_app()`, handlers de erro e routers com prefixo de versao                        |
 | `app/core/config.py` | `Settings` e `get_settings()` com cache                                                 |
+| `app/core/logging.py`| `configure_logging()` compartilhado pela API e pelo Worker                              |
 | `app/core/errors.py` | `DomainError` e subclasses, inclusive `CheckoutRejectedError`                           |
 | `app/core/events.py` | dataclasses de evento e `InMemoryEventPublisher`                                        |
 | `app/database.py`    | `Base`, engine, `session_transaction()` (commit + publish)                              |
@@ -62,7 +71,7 @@ a fila Ops pode ficar ate cerca de 15 minutos defasada. E-mail de alerta
 | `app/orders/`        | checkout, listagem/detalhe do Seller, status, cancelamento e seed de pedidos demo       |
 | `app/communication/` | Conversation, Messages, lazy close, batch de inatividade, PriorityPolicy e reconcilacao |
 | `app/support/`       | listagem/detalhe Ops, InternalComment, fila e override critical                         |
-| `app/jobs/`          | Job, registry, adapter SQS, Worker e enqueue                                            |
+| `app/jobs/`          | Job, registry, adapter SQS, Worker (ticker 60s) e enqueue                               |
 | `app/notifications/` | Notification in-app, canal, e-mail console, Job `NOTIFY_STATUS_CHANGE` e rotas          |
 | `app/dashboard/`     | Capability de leitura `GET /v1/dashboard` (projecao Seller/Buyer/Ops)                   |
 | `api/openapi.yaml`   | contrato da API escrito a mao                                                           |
@@ -288,8 +297,9 @@ Gaps reais de contrato encontrados e resolvidos ate aqui: CORS ausente
 `GET /v1/order-items/{item_id}` restrito ao Seller, sem acesso do Buyer ao
 proprio item (F5).
 
-Limitacoes da UI fechada (nao sao proxima fase): Notifications so por poll,
-sem push/real-time; tabelas sem ordenacao por coluna (nenhuma rota aceita
+Limitacoes da UI fechada (nao sao proxima fase): Notifications por poll de
+60s no `unread-count` (abrir o dropdown busca a lista na hora), sem
+push/real-time; tabelas sem ordenacao por coluna (nenhuma rota aceita
 sort, e ordenar so a pagina atual no cliente engana); busca de vendedor ou
 item exige UUID exato. Ver `docs/FRONTEND_F9_SPEC.md` para o detalhe da
 ultima fase de UI.
@@ -367,7 +377,9 @@ fechada**, nao uma fase de backend em aberto:
   `SEED_PASSWORD`. `User.role` e `buyer`, `seller` ou `ops`.
 - `make reset` recria o volume `postgres-data` (`docker compose down -v`), sobe
   o Postgres, aplica migrations e a seed completa. `make db-down` nao apaga o
-  volume. `make jobs-up` continua opcional depois do reset.
+  volume. `make jobs-up` e necessario para o sino in-app e para o ticker de
+  prioridade; o `reset` nao sobe LocalStack nem o Worker. `make jobs-up`
+  rebuilda a imagem do Worker.
 - Conversation: uma `open` por Order Item (indice unico parcial). Status
   `open`/`closed`. Motivos: `atraso`, `troca`, `devolucao`, `reclamacao`,
   `suporte`, `elogio`, `outros`.
@@ -416,9 +428,12 @@ referencia: `ENVIRONMENT`, `API_PREFIX`, `CORS_ORIGINS`, `DATABASE_URL`, `TEST_D
 `CONVERSATION_INACTIVITY_HOURS`, `AWS_ENDPOINT_URL`, `AWS_REGION`,
 `JOBS_QUEUE_NAME`, `JOBS_DLQ_NAME`, `JOBS_VISIBILITY_TIMEOUT_SECONDS`,
 `JOBS_MAX_RECEIVE_COUNT`, `JOBS_WAIT_TIME_SECONDS`, `RECONCILE_PAGE_SIZE`,
-`JOBS_SCHEDULE_EXPRESSION`, `NOTIFICATION_EMAIL_EXTRA_TO`. `AWS_ENDPOINT_URL` local padrao e
+`JOBS_RECONCILE_INTERVAL_SECONDS`,
+`NOTIFICATION_EMAIL_EXTRA_TO`. `AWS_ENDPOINT_URL` local padrao e
 `http://localhost:4566`; o cliente SQS usa keys dummy nesse endpoint para nao
-herdar `~/.aws`. `CORS_ORIGINS` e uma lista separada por virgula (padrao
+herdar `~/.aws`. Enqueue (API) e consume (Worker) usam configs boto3
+distintos: o HTTP read do Worker e maior que `JOBS_WAIT_TIME_SECONDS`.
+`CORS_ORIGINS` e uma lista separada por virgula (padrao
 `http://localhost:5173,http://localhost:3000`) e habilita `CORSMiddleware`
 para o frontend local. O `docker-compose.yml` consome
 `POSTGRES_USER`, `POSTGRES_PASSWORD` e `POSTGRES_DB`. Credenciais dummy do
@@ -454,7 +469,8 @@ previsto nesta entrega e nao e backlog aberto:
 - Cadastro publico de usuarios, refresh token e IdP.
 - Carrinho persistido, pagamentos, entrega.
 - Inbox global de frontend, KPIs/analytics, WebSocket/SSE.
-- Event bus, Outbox, Kafka, Redis ou observabilidade alem dos logs do Worker.
+- Event bus, Outbox, Kafka, Redis ou observabilidade alem dos logs da API e
+  do Worker.
 - Soft delete ou diferenciacao entre excluir e deixar de disponibilizar.
 - Slack/WhatsApp/SMS reais e SMTP de e-mail (hoje so console no Worker).
 - Notificacoes de `MessageCreated`.
@@ -467,6 +483,17 @@ de produto em `112515a`. Quem for estender o que esta em
 por uma spec nova.
 
 ## Historico de versoes
+
+- **1.0.2** — Worker SQS: timeout HTTP do long poll maior que
+  `JOBS_WAIT_TIME_SECONDS`; enqueue da API permanece curto. `make jobs-up`
+  passa a `--build`. `make worker-logs` filtra NOTIFY e e-mail na demo.
+  Sem mudanca de contrato.
+
+- **1.0.1** — Manutencao das notificacoes: logging na API, timeouts curtos no
+  cliente SQS, ticker de 60s no Worker (`JOBS_RECONCILE_INTERVAL_SECONDS`)
+  publicando `RECONCILE_PRIORITIES` (EventBridge local continua mock; a
+  expressao da Rule e derivada dos segundos), poll de 60s no sino e refetch
+  da lista ao abrir o dropdown. Sem mudanca de contrato.
 
 - **1.0.0** — Solucao do desafio fechada. README de onboarding (stack com
   Python, jornadas Buyer/Seller/Ops, diagrama de dominios, como rodar API

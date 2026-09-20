@@ -5,8 +5,21 @@ QUEUE_NAME="${JOBS_QUEUE_NAME:-market-hub-jobs}"
 DLQ_NAME="${JOBS_DLQ_NAME:-market-hub-jobs-dlq}"
 MAX_RECEIVE="${JOBS_MAX_RECEIVE_COUNT:-3}"
 VISIBILITY="${JOBS_VISIBILITY_TIMEOUT_SECONDS:-60}"
-SCHEDULE="${JOBS_SCHEDULE_EXPRESSION:-rate(15 minutes)}"
+INTERVAL="${JOBS_RECONCILE_INTERVAL_SECONDS:-60}"
 RULE_NAME="market-hub-reconcile-priorities"
+
+# A Rule do EventBridge exige a sintaxe rate(n minute[s]); o relogio do
+# usuario e so o numero em segundos. No LocalStack a Rule e mock.
+if [ "$INTERVAL" -le 0 ]; then
+  MINUTES=1
+else
+  MINUTES=$(( (INTERVAL + 59) / 60 ))
+fi
+if [ "$MINUTES" -eq 1 ]; then
+  SCHEDULE="rate(1 minute)"
+else
+  SCHEDULE="rate(${MINUTES} minutes)"
+fi
 
 awslocal sqs create-queue --queue-name "$DLQ_NAME"
 DLQ_URL=$(awslocal sqs get-queue-url --queue-name "$DLQ_NAME" --query QueueUrl --output text)

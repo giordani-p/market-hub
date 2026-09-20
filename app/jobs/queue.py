@@ -5,13 +5,30 @@ from dataclasses import dataclass
 from typing import Protocol
 
 import boto3
-from botocore.exceptions import ClientError
+from botocore.config import Config
+from botocore.exceptions import ClientError, ReadTimeoutError
 
 from app.core.config import Settings, get_settings
 
 # Credenciais dummy aceitas pelo LocalStack. Nao sao segredos reais.
 _LOCALSTACK_ACCESS_KEY = "test"
 _LOCALSTACK_SECRET_KEY = "test"
+
+# Enqueue e efeito secundario: nao pode segurar o request HTTP.
+_ENQUEUE_SQS_CONFIG = Config(
+    connect_timeout=2,
+    read_timeout=5,
+    retries={"max_attempts": 2},
+)
+
+
+def _consume_sqs_config(settings: Settings) -> Config:
+    """HTTP read precisa ultrapassar o WaitTimeSeconds do long poll."""
+    return Config(
+        connect_timeout=2,
+        read_timeout=settings.jobs_wait_time_seconds + 5,
+        retries={"max_attempts": 2},
+    )
 
 
 @dataclass(frozen=True)
@@ -28,12 +45,13 @@ class JobQueue(Protocol):
     def send(self, body: str) -> None: ...
 
 
-def sqs_client_kwargs(settings: Settings) -> dict[str, str | None]:
+def sqs_client_kwargs(settings: Settings, *, long_poll: bool = False) -> dict[str, object]:
     """Usa dummy keys no endpoint local para nao herdar ~/.aws contra a AWS real."""
     endpoint = settings.aws_endpoint_url or None
-    kwargs: dict[str, str | None] = {
+    kwargs: dict[str, object] = {
         "region_name": settings.aws_region,
         "endpoint_url": endpoint,
+        "config": _consume_sqs_config(settings) if long_poll else _ENQUEUE_SQS_CONFIG,
     }
     if endpoint:
         kwargs["aws_access_key_id"] = _LOCALSTACK_ACCESS_KEY
@@ -45,9 +63,17 @@ def sqs_client_kwargs(settings: Settings) -> dict[str, str | None]:
 class SqsJobQueue:
     """Adapter SQS. Sem endpoint, usa o default da AWS."""
 
-    def __init__(self, settings: Settings, client: object | None = None) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        client: object | None = None,
+        *,
+        long_poll: bool = False,
+    ) -> None:
         self._settings = settings
-        self._client = client or boto3.client("sqs", **sqs_client_kwargs(settings))
+        self._client = client or boto3.client(
+            "sqs", **sqs_client_kwargs(settings, long_poll=long_poll)
+        )
         self._queue_url: str | None = None
 
     def queue_url(self) -> str:
@@ -58,12 +84,15 @@ class SqsJobQueue:
         return self._queue_url
 
     def receive(self) -> ReceivedMessage | None:
-        response = self._client.receive_message(
-            QueueUrl=self.queue_url(),
-            MaxNumberOfMessages=1,
-            WaitTimeSeconds=self._settings.jobs_wait_time_seconds,
-            VisibilityTimeout=self._settings.jobs_visibility_timeout_seconds,
-        )
+        try:
+            response = self._client.receive_message(
+                QueueUrl=self.queue_url(),
+                MaxNumberOfMessages=1,
+                WaitTimeSeconds=self._settings.jobs_wait_time_seconds,
+                VisibilityTimeout=self._settings.jobs_visibility_timeout_seconds,
+            )
+        except ReadTimeoutError:
+            return None
         messages = response.get("Messages") or []
         if not messages:
             return None

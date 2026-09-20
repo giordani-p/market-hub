@@ -9,6 +9,7 @@ from app.catalog import offers, products
 from app.communication.routes import conversation_router, item_router
 from app.core.config import Settings, get_settings
 from app.core.errors import register_exception_handlers
+from app.core.logging import configure_logging
 from app.dashboard.routes import router as dashboard_router
 from app.notifications.routes import router as notifications_router
 from app.orders.routes import items_router, orders_router
@@ -17,6 +18,7 @@ from app.support.routes import ops_router, seller_comments_router
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     """Cria a aplicacao. Recebe settings explicitas nos testes."""
+    configure_logging()
     settings = settings or get_settings()
 
     app = FastAPI(

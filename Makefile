@@ -1,4 +1,4 @@
-.PHONY: install lint format test run db-up db-down migrate revision seed reset close-inactive jobs-up enqueue-reconcile worker
+.PHONY: install lint format test run db-up db-down migrate revision seed reset close-inactive jobs-up enqueue-reconcile worker worker-logs
 
 install:
 	uv sync --extra dev
@@ -44,10 +44,14 @@ close-inactive:
 	uv run python -m app.communication.close_inactive
 
 jobs-up:
-	docker compose up -d --wait postgres localstack worker
+	docker compose up -d --build --wait postgres localstack worker
 
 enqueue-reconcile:
 	uv run python -m app.jobs.enqueue
 
 worker:
 	uv run python -m app.jobs.worker
+
+# Demo: NOTIFY e e-mail, sem o ticker RECONCILE nem traceback boto3. Completo: docker compose logs -f worker
+worker-logs:
+	docker compose logs -f worker | grep --line-buffered -E 'worker started|NOTIFY_STATUS_CHANGE|notification job|email notification|worker loop error|job failed'
