@@ -52,8 +52,11 @@ configura o mesmo formato de log do Worker; falha ao enfileirar
 stdout. O enqueue da API usa timeout HTTP curto (2s/5s) para nao travar o
 request; o Worker usa `read_timeout = JOBS_WAIT_TIME_SECONDS + 5` no long
 poll. `make jobs-up` rebuilda a imagem (`COPY app` no Dockerfile).
-`make worker-logs` segue o stdout do Worker filtrado (NOTIFY, e-mail, erro
-do loop), sem o ticker `RECONCILE_PRIORITIES`.
+`make worker-logs` segue o stdout do Worker com historico filtrado, sem
+prefixo do Compose: NOTIFY, e-mail, ignored, started/stopping e erro do
+loop, com o match em cor. Sem `--tail=0`, sem linha em branco por evento
+e sem o ticker `RECONCILE_PRIORITIES`. O received do Job inclui
+`previous`/`new`; `job completed` inclui o `type`.
 
 ## Mapa do codigo
 
@@ -483,6 +486,11 @@ de produto em `112515a`. Quem for estender o que esta em
 por uma spec nova.
 
 ## Historico de versoes
+
+- **1.0.3** — `make worker-logs` mostra historico filtrado (sem `--tail=0` nem
+  linha em branco por match); o filtro inclui ignored/stopping. O log
+  `notification job received` passa a `previous`/`new`; `job completed`
+  inclui o `type`. Sem mudanca de contrato.
 
 - **1.0.3** — Health check passa a pingar o Postgres (`SELECT 1`). `GET /v1/health`
   responde `200` + `status: ok` quando o banco responde e `503` + `status: error`
