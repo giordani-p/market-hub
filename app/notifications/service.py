@@ -34,10 +34,12 @@ def process_notify_job(
     changed_at = datetime.fromisoformat(_require_str(params, "changed_at"))
 
     logger.info(
-        "notification job received type=%s entity_type=%s entity_id=%s",
+        "notification job received type=%s entity_type=%s entity_id=%s previous=%s new=%s",
         notification_type,
         entity_type,
         entity_id,
+        previous_status,
+        new_status,
     )
 
     title, message = build_copy(

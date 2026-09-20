@@ -1,4 +1,5 @@
 import json
+import logging
 from collections.abc import Callable
 
 import pytest
@@ -93,6 +94,15 @@ def test_worker_does_not_delete_unknown_or_invalid_payload() -> None:
     assert process_once(queue, registry) is True
     assert queue.deleted == ["1"]
     assert queue.pending[0][0] == "2"
+
+
+def test_worker_logs_job_completed_with_type(caplog: pytest.LogCaptureFixture) -> None:
+    queue = InMemoryJobQueue()
+    queue.send(json.dumps({"job_type": NOTIFY_STATUS_CHANGE, "params": {}}))
+    registry = JobRegistry({NOTIFY_STATUS_CHANGE: lambda job: None})
+    with caplog.at_level(logging.INFO, logger="app.jobs.worker"):
+        assert process_once(queue, registry) is True
+    assert "job completed type=NOTIFY_STATUS_CHANGE" in caplog.text
 
 
 def test_worker_notify_handler_deletes_on_success() -> None:

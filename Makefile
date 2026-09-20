@@ -52,6 +52,10 @@ enqueue-reconcile:
 worker:
 	uv run python -m app.jobs.worker
 
-# Demo: NOTIFY e e-mail, sem o ticker RECONCILE nem traceback boto3. Completo: docker compose logs -f worker
+# Demo: historico filtrado, sem prefixo do Compose; NOTIFY e e-mail em destaque.
+# Sem ticker RECONCILE nem traceback boto3. Completo: docker compose logs -f worker
 worker-logs:
-	docker compose logs -f worker | grep --line-buffered -E 'worker started|NOTIFY_STATUS_CHANGE|notification job|email notification|worker loop error|job failed'
+	@echo "NOTIFY / e-mail / erros (sem ticker RECONCILE). Completo: docker compose logs -f worker"
+	docker compose logs -f --no-log-prefix worker \
+		| grep --line-buffered --color=always -E \
+			'worker started|worker stopping|worker loop error|job failed|NOTIFY_STATUS_CHANGE|notification (job|ignored)|email notification'

@@ -137,6 +137,36 @@ def test_console_email_sender_logs_recipients() -> None:
     assert "new_status=critical" in records[0]
 
 
+def test_process_notify_job_logs_status_transition(
+    caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        "app.notifications.service.resolve_recipients",
+        lambda *args, **kwargs: [uuid4()],
+    )
+    monkeypatch.setattr(
+        "app.notifications.service.resolve_email_recipients",
+        lambda *args, **kwargs: [],
+    )
+    job = _job(notification_type=CONVERSATION_PRIORITY_CHANGED, new_status="high")
+    with caplog.at_level(logging.INFO, logger="app.notifications.service"):
+        process_notify_job(
+            MagicMock(),
+            job,
+            channel=_FakeChannel(),
+            email_sender=_FakeEmailSender(),
+            extra_email_to="",
+        )
+    received = next(
+        record.getMessage()
+        for record in caplog.records
+        if record.getMessage().startswith("notification job received")
+    )
+    assert "previous=medium" in received
+    assert "new=high" in received
+    assert str(job.params["entity_id"]) in received
+
+
 def test_process_notify_job_emails_high_and_critical(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "app.notifications.service.resolve_recipients",

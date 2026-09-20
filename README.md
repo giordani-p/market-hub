@@ -133,7 +133,7 @@ A API default do cliente é `http://localhost:8000/v1`. Defina
 ```bash
 make jobs-up           # sobe Postgres, LocalStack e o Worker
 make enqueue-reconcile # publica RECONCILE_PRIORITIES na hora, sem esperar o ticker
-make worker-logs       # NOTIFY e e-mail; sem o ticker RECONCILE
+make worker-logs       # demo: historico filtrado; NOTIFY e e-mail; sem ticker RECONCILE
 ```
 
 Sem o Worker, a API grava o pedido e responde `200`, mas a Notification nao
