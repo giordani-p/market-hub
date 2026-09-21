@@ -15,6 +15,7 @@ import { Page } from '../../components/layout/Page'
 import { PageHeader } from '../../components/layout/PageHeader'
 import { Section } from '../../components/layout/Section'
 import { formatCurrencyBRL, formatDateTime } from '../../lib/utils/format'
+import { formatOrderItemNumber } from '../../lib/utils/orderNumber'
 import type { EffectivePriority } from '../../types/conversation'
 import type { OpsDashboard } from '../../types/dashboard'
 import { PRIORITY_LABELS } from '../ops/priority'
@@ -60,6 +61,7 @@ export function OpsDashboardView({ data }: { data: OpsDashboard }) {
             <TableHead>
               <TableRow>
                 <TableHeaderCell>Prioridade</TableHeaderCell>
+                <TableHeaderCell>Pedido</TableHeaderCell>
                 <TableHeaderCell>Produto</TableHeaderCell>
                 <TableHeaderCell>Vendedor</TableHeaderCell>
                 <TableHeaderCell>Comprador</TableHeaderCell>
@@ -74,6 +76,7 @@ export function OpsDashboardView({ data }: { data: OpsDashboard }) {
                   <TableCell label="Prioridade">
                     <PriorityBadge priority={item.effective_priority} />
                   </TableCell>
+                  <TableCell label="Pedido">{formatOrderItemNumber(item.number)}</TableCell>
                   <TableCell label="Produto">
                     <TableRowLink to={`/ops/conversations/${item.conversation_id}`}>
                       {item.product.name}

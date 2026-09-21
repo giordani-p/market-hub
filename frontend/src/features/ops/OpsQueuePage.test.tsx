@@ -19,6 +19,7 @@ function response(
       {
         id: 'conversation-1',
         order_item_id: 'item-1',
+        number: '1042-1',
         reason: 'atraso',
         status: 'open',
         created_at: '2026-01-01T00:00:00Z',

@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: Market Hub API
   description: Market Hub backend. Catalog, Order, Communication, Support/Ops, Notifications and Dashboard.
-  version: 1.0.3
+  version: 1.1.0
 paths:
   /v1/health:
     get:
@@ -392,6 +392,7 @@ paths:
           schema:
             type: string
             format: uuid
+        - $ref: "#/components/parameters/PublicNumber"
       responses:
         "200":
           description: Paginated order items of the authenticated seller
@@ -746,6 +747,7 @@ paths:
           schema:
             type: string
             format: uuid
+        - $ref: "#/components/parameters/PublicNumber"
         - name: seller_id
           in: query
           required: false
@@ -902,6 +904,7 @@ paths:
           schema:
             type: string
             format: uuid
+        - $ref: "#/components/parameters/PublicNumber"
         - name: effective_priority
           in: query
           required: false
@@ -1189,6 +1192,14 @@ components:
       schema:
         type: string
         format: uuid
+    PublicNumber:
+      name: number
+      in: query
+      required: false
+      description: Public order number (1042) or item number (1042-1). Does not replace order_item_id.
+      schema:
+        type: string
+        pattern: ^[0-9]+(-[0-9]+)?$
 
   responses:
     NotFound:
@@ -1237,7 +1248,7 @@ components:
           example: ok
         version:
           type: string
-          example: 1.0.3
+          example: 1.1.0
 
     ErrorResponse:
       description: Business error raised by the application.
@@ -1524,6 +1535,7 @@ components:
       type: object
       required:
         - id
+        - number
         - buyer_id
         - items
         - created_at
@@ -1532,6 +1544,9 @@ components:
         id:
           type: string
           format: uuid
+        number:
+          type: integer
+          minimum: 1001
         buyer_id:
           type: string
           format: uuid
@@ -1551,6 +1566,7 @@ components:
       type: object
       required:
         - id
+        - number
         - order_id
         - offer_id
         - quantity
@@ -1563,6 +1579,10 @@ components:
         id:
           type: string
           format: uuid
+        number:
+          type: string
+          pattern: ^[0-9]+-[0-9]+$
+          example: "1042-1"
         order_id:
           type: string
           format: uuid
@@ -1589,6 +1609,7 @@ components:
       type: object
       required:
         - id
+        - number
         - order_id
         - offer_id
         - quantity
@@ -1600,6 +1621,10 @@ components:
         id:
           type: string
           format: uuid
+        number:
+          type: string
+          pattern: ^[0-9]+-[0-9]+$
+          example: "1042-1"
         order_id:
           type: string
           format: uuid
@@ -1701,11 +1726,15 @@ components:
       type: object
       required:
         - id
+        - number
         - created_at
       properties:
         id:
           type: string
           format: uuid
+        number:
+          type: integer
+          minimum: 1001
         created_at:
           type: string
           format: date-time
@@ -1714,6 +1743,7 @@ components:
       type: object
       required:
         - order_item_id
+        - number
         - product
         - quantity
         - purchase_price
@@ -1725,6 +1755,10 @@ components:
         order_item_id:
           type: string
           format: uuid
+        number:
+          type: string
+          pattern: ^[0-9]+-[0-9]+$
+          example: "1042-1"
         product:
           $ref: "#/components/schemas/ProductSummary"
         quantity:
@@ -1769,6 +1803,7 @@ components:
       type: object
       required:
         - id
+        - number
         - offer_id
         - quantity
         - purchase_price
@@ -1782,6 +1817,10 @@ components:
         id:
           type: string
           format: uuid
+        number:
+          type: string
+          pattern: ^[0-9]+-[0-9]+$
+          example: "1042-1"
         offer_id:
           type: string
           format: uuid
@@ -1809,6 +1848,7 @@ components:
       type: object
       required:
         - order_item_id
+        - number
         - product
         - quantity
         - purchase_price
@@ -1821,6 +1861,10 @@ components:
         order_item_id:
           type: string
           format: uuid
+        number:
+          type: string
+          pattern: ^[0-9]+-[0-9]+$
+          example: "1042-1"
         product:
           $ref: "#/components/schemas/ProductSummary"
         quantity:
@@ -1867,6 +1911,7 @@ components:
       type: object
       required:
         - id
+        - number
         - offer_id
         - quantity
         - purchase_price
@@ -1881,6 +1926,10 @@ components:
         id:
           type: string
           format: uuid
+        number:
+          type: string
+          pattern: ^[0-9]+-[0-9]+$
+          example: "1042-1"
         offer_id:
           type: string
           format: uuid
@@ -2153,6 +2202,7 @@ components:
       required:
         - id
         - order_item_id
+        - number
         - reason
         - status
         - created_at
@@ -2173,6 +2223,10 @@ components:
         order_item_id:
           type: string
           format: uuid
+        number:
+          type: string
+          pattern: ^[0-9]+-[0-9]+$
+          example: "1042-1"
         reason:
           $ref: "#/components/schemas/ConversationReason"
         status:
@@ -2398,6 +2452,7 @@ components:
       type: object
       required:
         - order_item_id
+        - number
         - order_id
         - product
         - buyer
@@ -2409,6 +2464,10 @@ components:
         order_item_id:
           type: string
           format: uuid
+        number:
+          type: string
+          pattern: ^[0-9]+-[0-9]+$
+          example: "1042-1"
         order_id:
           type: string
           format: uuid
@@ -2480,6 +2539,7 @@ components:
       type: object
       required:
         - order_item_id
+        - number
         - product
         - quantity
         - status
@@ -2487,6 +2547,10 @@ components:
         order_item_id:
           type: string
           format: uuid
+        number:
+          type: string
+          pattern: ^[0-9]+-[0-9]+$
+          example: "1042-1"
         product:
           $ref: "#/components/schemas/ProductSummary"
         quantity:
@@ -2499,6 +2563,7 @@ components:
       type: object
       required:
         - order_id
+        - number
         - created_at
         - status
         - total_amount
@@ -2507,6 +2572,9 @@ components:
         order_id:
           type: string
           format: uuid
+        number:
+          type: integer
+          minimum: 1001
         created_at:
           type: string
           format: date-time
@@ -2565,6 +2633,7 @@ components:
       required:
         - conversation_id
         - order_item_id
+        - number
         - effective_priority
         - calculated_priority
         - ops_override
@@ -2582,6 +2651,10 @@ components:
         order_item_id:
           type: string
           format: uuid
+        number:
+          type: string
+          pattern: ^[0-9]+-[0-9]+$
+          example: "1042-1"
         effective_priority:
           $ref: "#/components/schemas/EffectivePriority"
         calculated_priority:

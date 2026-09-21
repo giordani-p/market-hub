@@ -40,6 +40,7 @@ from app.dashboard.schemas import (
 )
 from app.orders.access import seller_list_statement
 from app.orders.models import Order, OrderItem
+from app.orders.numbers import item_number
 from app.orders.schemas import BuyerSummary, ProductSummary
 from app.support.priority_ops import EffectivePriority, preview_open_queue
 from app.support.schemas import OpsConversationQueueItem
@@ -80,6 +81,7 @@ def seller_dashboard(session: Session, seller_id: UUID) -> SellerDashboard:
             order_items=[
                 SellerRecentOrderItem(
                     order_item_id=item.id,
+                    number=item_number(order.number, item.line),
                     order_id=order.id,
                     product=ProductSummary(id=product.id, name=product.name),
                     buyer=BuyerSummary(id=buyer.id, name=buyer.name),
@@ -163,6 +165,7 @@ def _buyer_recent_orders(session: Session, orders: list[Order]) -> list[BuyerRec
         recent.append(
             BuyerRecentOrder(
                 order_id=order.id,
+                number=order.number,
                 created_at=order.created_at,
                 status=buyer_order_projection_status([item.status for item, _ in pairs]),
                 total_amount=format_order_total(
@@ -171,6 +174,7 @@ def _buyer_recent_orders(session: Session, orders: list[Order]) -> list[BuyerRec
                 items=[
                     BuyerRecentOrderItem(
                         order_item_id=item.id,
+                        number=item_number(order.number, item.line),
                         product=ProductSummary(id=product.id, name=product.name),
                         quantity=item.quantity,
                         status=item.status,
@@ -211,6 +215,7 @@ def _preview_item(item: OpsConversationQueueItem) -> OpsQueuePreviewItem:
     return OpsQueuePreviewItem(
         conversation_id=item.id,
         order_item_id=item.order_item_id,
+        number=item.number,
         effective_priority=item.effective_priority,
         calculated_priority=item.calculated_priority,
         ops_override=item.ops_override,

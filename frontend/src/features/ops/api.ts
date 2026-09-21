@@ -22,6 +22,9 @@ export function buildOpsConversationQueueQuery(filters: OpsConversationQueueFilt
   if (filters.orderItemId) {
     params.set('order_item_id', filters.orderItemId)
   }
+  if (filters.number) {
+    params.set('number', filters.number)
+  }
   if (filters.effectivePriority) {
     params.set('effective_priority', filters.effectivePriority)
   }
@@ -86,6 +89,9 @@ export function buildOpsOrderItemsQuery(filters: OpsOrderItemFilters): string {
   }
   if (filters.orderItemId) {
     params.set('order_item_id', filters.orderItemId)
+  }
+  if (filters.number) {
+    params.set('number', filters.number)
   }
   if (filters.sellerId) {
     params.set('seller_id', filters.sellerId)

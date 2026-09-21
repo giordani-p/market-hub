@@ -30,7 +30,14 @@ describe('PurchasePanel', () => {
   })
 
   it('buys with the selected offer and calls onPurchased on success', async () => {
-    const order = { id: 'order-1', buyer_id: 'buyer-1', items: [], created_at: '', updated_at: '' }
+    const order = {
+      id: 'order-1',
+      number: 1042,
+      buyer_id: 'buyer-1',
+      items: [],
+      created_at: '',
+      updated_at: '',
+    }
     createOrder.mockResolvedValueOnce(order)
     const onPurchased = vi.fn()
     render(<PurchasePanel offers={[offer]} onPurchased={onPurchased} />)

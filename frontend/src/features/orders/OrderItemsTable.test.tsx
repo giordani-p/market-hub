@@ -5,6 +5,7 @@ import { OrderItemsTable } from './OrderItemsTable'
 
 const item: BuyerOrderItem = {
   id: 'item-1',
+  number: '1042-1',
   order_id: 'order-1',
   offer_id: 'offer-1',
   quantity: 3,
@@ -20,6 +21,7 @@ describe('OrderItemsTable', () => {
     render(<OrderItemsTable items={[item]} />)
 
     expect(screen.getByText('Tenis XYZ')).toBeInTheDocument()
+    expect(screen.getByText('#1042-1')).toBeInTheDocument()
     expect(screen.getByText('x3')).toBeInTheDocument()
     expect(screen.getByText('R$ 150,00')).toBeInTheDocument()
     expect(screen.getByText('Entregue')).toBeInTheDocument()

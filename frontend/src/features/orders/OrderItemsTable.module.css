@@ -25,6 +25,11 @@
   min-width: 0;
 }
 
+.number {
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .quantity {
   color: var(--color-muted);
 }

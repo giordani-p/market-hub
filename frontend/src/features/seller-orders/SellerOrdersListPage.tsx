@@ -21,7 +21,15 @@ import { PageHeader } from '../../components/layout/PageHeader'
 import { formatCurrencyBRL, formatDate, toDayEndUTC, toDayStartUTC } from '../../lib/utils/format'
 import { useAsync } from '../../lib/utils/useAsync'
 import { useDebouncedValue } from '../../lib/utils/useDebouncedValue'
-import { isCompleteUuid, useUrlFilters } from '../../lib/utils/useUrlFilters'
+import {
+  ORDER_LOOKUP_ERROR,
+  ORDER_LOOKUP_HINT,
+  applyLookupToFilters,
+  classifyOrderLookup,
+  formatOrderItemNumber,
+  orderLookupChipLabel,
+} from '../../lib/utils/orderNumber'
+import { useUrlFilters } from '../../lib/utils/useUrlFilters'
 import type { OrderItemStatus } from '../../types/order'
 import { ORDER_ITEM_STATUS_LABELS } from '../orders/status'
 import { fetchSellerOrderItems } from './api'
@@ -41,7 +49,7 @@ const STATUS_OPTIONS = [
   ...STATUS_VALUES.map((value) => ({ value, label: ORDER_ITEM_STATUS_LABELS[value] })),
 ]
 
-const FILTER_KEYS = ['status', 'order_item_id', 'from', 'to']
+const FILTER_KEYS = ['status', 'order_item_id', 'number', 'from', 'to']
 
 function parseStatus(value: string): OrderItemStatus | '' {
   return STATUS_VALUES.includes(value as OrderItemStatus) ? (value as OrderItemStatus) : ''
@@ -50,15 +58,14 @@ function parseStatus(value: string): OrderItemStatus | '' {
 export function SellerOrdersListPage() {
   const filters = useUrlFilters()
   const status = parseStatus(filters.get('status'))
-  const orderItemId = filters.get('order_item_id')
+  const lookupInput = filters.get('number') || filters.get('order_item_id')
   const fromDate = filters.get('from')
   const toDate = filters.get('to')
   const page = Number(filters.get('page')) || 1
 
-  // Só o ID completo vale como filtro: o backend compara por igualdade.
-  const debouncedOrderItemId = useDebouncedValue(orderItemId)
-  const orderItemIdIsValid = debouncedOrderItemId === '' || isCompleteUuid(debouncedOrderItemId)
-  const appliedOrderItemId = orderItemIdIsValid ? debouncedOrderItemId : ''
+  const lookup = classifyOrderLookup(lookupInput)
+  const debouncedLookupInput = useDebouncedValue(lookupInput)
+  const appliedLookup = classifyOrderLookup(debouncedLookupInput)
 
   const state = useAsync(
     () =>
@@ -66,11 +73,12 @@ export function SellerOrdersListPage() {
         page,
         pageSize: PAGE_SIZE,
         status: status || undefined,
-        orderItemId: appliedOrderItemId || undefined,
+        orderItemId: appliedLookup.status === 'uuid' ? appliedLookup.value : undefined,
+        number: appliedLookup.status === 'number' ? appliedLookup.value : undefined,
         from: fromDate ? toDayStartUTC(fromDate) : undefined,
         to: toDate ? toDayEndUTC(toDate) : undefined,
       }),
-    [page, status, appliedOrderItemId, fromDate, toDate],
+    [page, status, appliedLookup.status, appliedLookup.value, fromDate, toDate],
   )
 
   const total = state.status === 'success' ? state.data.total : 0
@@ -87,12 +95,15 @@ export function SellerOrdersListPage() {
           },
         ]
       : []),
-    ...(orderItemId
+    ...(lookupInput
       ? [
           {
-            key: 'order_item_id',
-            label: `Item ${orderItemId.slice(0, 8)}`,
-            onRemove: () => filters.set('order_item_id', null),
+            key: 'number',
+            label: orderLookupChipLabel(lookupInput),
+            onRemove: () => {
+              filters.set('number', null)
+              filters.set('order_item_id', null)
+            },
           },
         ]
       : []),
@@ -117,13 +128,13 @@ export function SellerOrdersListPage() {
           onChange={(event) => filters.set('status', event.target.value || null)}
         />
         <TextField
-          label="Item do pedido"
-          name="order_item_id"
-          value={orderItemId}
-          onChange={(event) => filters.set('order_item_id', event.target.value || null)}
-          placeholder="00000000-0000-0000-0000-000000000000"
-          hint="Cole o ID completo do item."
-          error={orderItemIdIsValid ? undefined : 'Informe o ID completo do item.'}
+          label="Pedido"
+          name="number"
+          value={lookupInput}
+          onChange={(event) => applyLookupToFilters(filters.set, event.target.value)}
+          placeholder="1042 ou 1042-1"
+          hint={ORDER_LOOKUP_HINT}
+          error={lookup.status === 'invalid' ? ORDER_LOOKUP_ERROR : undefined}
         />
         <TextField
           label="De"
@@ -162,6 +173,7 @@ export function SellerOrdersListPage() {
           <Table caption="Itens de pedido da sua loja">
             <TableHead>
               <TableRow>
+                <TableHeaderCell>Pedido</TableHeaderCell>
                 <TableHeaderCell>Produto</TableHeaderCell>
                 <TableHeaderCell>Comprador</TableHeaderCell>
                 <TableHeaderCell numeric>Qtd</TableHeaderCell>
@@ -173,6 +185,7 @@ export function SellerOrdersListPage() {
             <TableBody>
               {items.map((item) => (
                 <TableRow key={item.order_item_id} linked>
+                  <TableCell label="Pedido">{formatOrderItemNumber(item.number)}</TableCell>
                   <TableCell label="Produto">
                     <TableRowLink to={`/seller/orders/${item.order_item_id}`}>
                       {item.product.name}

@@ -82,12 +82,14 @@ describe('DashboardPage', () => {
         orders: [
           {
             order_id: 'order-1',
+            number: 1042,
             created_at: '2026-01-01T00:00:00Z',
             status: 'in_progress',
             total_amount: '199.90',
             items: [
               {
                 order_item_id: 'item-1',
+                number: '1042-1',
                 product: { id: 'product-1', name: 'Tenis Runner' },
                 quantity: 1,
                 status: 'preparing',
@@ -121,6 +123,7 @@ describe('DashboardPage', () => {
           {
             conversation_id: 'conv-1',
             order_item_id: 'item-1',
+            number: '1042-1',
             effective_priority: 'critical',
             calculated_priority: 'high',
             ops_override: 'critical',

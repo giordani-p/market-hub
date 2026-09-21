@@ -1,4 +1,4 @@
-import { MessageCircle } from 'lucide-react'
+import { Copy, MessageCircle } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Button } from '../../components/ui/Button'
 import { SelectField } from '../../components/ui/SelectField'
@@ -9,6 +9,7 @@ import { ErrorState } from '../../components/feedback/ErrorState'
 import { Spinner } from '../../components/feedback/Spinner'
 import { errorMessage } from '../../lib/utils/errorMessage'
 import { formatTime } from '../../lib/utils/format'
+import { formatOrderItemNumber } from '../../lib/utils/orderNumber'
 import type { Conversation, ConversationReason, Message } from '../../types/conversation'
 import {
   closeConversation,
@@ -49,10 +50,13 @@ const PANEL_TITLE: Record<ViewerRole, string> = {
 
 interface ConversationPanelProps {
   itemId: string
+  itemNumber: string
   viewerRole: ViewerRole
 }
 
-export function ConversationPanel({ itemId, viewerRole }: ConversationPanelProps) {
+export function ConversationPanel({ itemId, itemNumber, viewerRole }: ConversationPanelProps) {
+  const publicNumber = formatOrderItemNumber(itemNumber)
+  const [copied, setCopied] = useState(false)
   const [conversations, setConversations] = useState<Conversation[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [selected, setSelected] = useState<Conversation | null>(null)
@@ -86,6 +90,14 @@ export function ConversationPanel({ itemId, viewerRole }: ConversationPanelProps
     loadConversations()
   }, [loadConversations])
 
+  useEffect(() => {
+    if (!copied) {
+      return
+    }
+    const timer = window.setTimeout(() => setCopied(false), 2000)
+    return () => window.clearTimeout(timer)
+  }, [copied])
+
   const loadMessages = useCallback((conversationId: string, before?: string) => {
     setLoadingMessages(true)
     setMessagesError(null)
@@ -104,6 +116,15 @@ export function ConversationPanel({ itemId, viewerRole }: ConversationPanelProps
       loadMessages(selected.id)
     }
   }, [selected, loadMessages])
+
+  async function handleCopyNumber() {
+    try {
+      await navigator.clipboard.writeText(itemNumber)
+      setCopied(true)
+    } catch {
+      setCopied(false)
+    }
+  }
 
   async function handleOpenConversation() {
     setOpening(true)
@@ -187,11 +208,24 @@ export function ConversationPanel({ itemId, viewerRole }: ConversationPanelProps
           {PANEL_TITLE[viewerRole]}
         </h2>
         {selected && <PriorityBadge priority={selected.effective_priority} />}
+        <div className={styles.orderMeta}>
+          <span className={styles.orderNumber}>Pedido {publicNumber}</span>
+          <Button
+            type="button"
+            variant="tertiary"
+            size="sm"
+            onClick={() => void handleCopyNumber()}
+            aria-label="Copiar número do pedido"
+          >
+            <Copy size={14} aria-hidden="true" />
+            {copied ? 'Copiado' : 'Copiar'}
+          </Button>
+        </div>
       </div>
 
       {!selected && (
         <div className={styles.empty}>
-          <EmptyState title="Nenhuma conversa neste pedido ainda." />
+          <EmptyState title={`Nenhuma conversa no pedido ${publicNumber} ainda.`} />
           {openForm}
         </div>
       )}
@@ -225,7 +259,7 @@ export function ConversationPanel({ itemId, viewerRole }: ConversationPanelProps
                 aria-label="Escrever mensagem"
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
-                placeholder="Escrever mensagem..."
+                placeholder={`Escrever sobre o pedido ${publicNumber}…`}
                 maxLength={2000}
               />
               <Button type="button" onClick={handleSend} loading={sending} disabled={!draft.trim()}>

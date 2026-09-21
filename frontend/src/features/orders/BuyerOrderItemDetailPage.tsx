@@ -8,6 +8,7 @@ import { Page } from '../../components/layout/Page'
 import { PageHeader } from '../../components/layout/PageHeader'
 import { ConversationPanel } from '../conversations/ConversationPanel'
 import { formatCurrencyBRL, formatDate } from '../../lib/utils/format'
+import { formatOrderItemNumber, formatOrderNumber } from '../../lib/utils/orderNumber'
 import { useAsync } from '../../lib/utils/useAsync'
 import { fetchOrder } from './api'
 import { BuyerCancelActions } from './BuyerCancelActions'
@@ -37,7 +38,7 @@ export function BuyerOrderItemDetailPage() {
         meta={<StatusBadge status={item.status} />}
         breadcrumbs={[
           { label: 'Meus pedidos', to: '/buyer/orders' },
-          { label: `#${order.id.slice(0, 8)}`, to: `/buyer/orders/${order.id}` },
+          { label: formatOrderNumber(order.number), to: `/buyer/orders/${order.id}` },
           { label: item.product.name },
         ]}
         actions={
@@ -52,13 +53,13 @@ export function BuyerOrderItemDetailPage() {
             { term: 'Preço', value: formatCurrencyBRL(item.purchase_price) },
             {
               term: 'Pedido',
-              value: `#${order.id.slice(0, 8)} — ${formatDate(order.created_at)}`,
+              value: `${formatOrderItemNumber(item.number)} — ${formatDate(order.created_at)}`,
             },
           ]}
         />
       </Card>
 
-      <ConversationPanel itemId={item.id} viewerRole="buyer" />
+      <ConversationPanel itemId={item.id} itemNumber={item.number} viewerRole="buyer" />
     </Page>
   )
 }

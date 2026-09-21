@@ -50,6 +50,7 @@ class SellerRecentOrderItem(BaseModel):
     model_config = _FORBID
 
     order_item_id: UUID
+    number: str
     order_id: UUID
     product: ProductSummary
     buyer: BuyerSummary
@@ -85,6 +86,7 @@ class BuyerRecentOrderItem(BaseModel):
     model_config = _FORBID
 
     order_item_id: UUID
+    number: str
     product: ProductSummary
     quantity: int = Field(ge=1)
     status: str
@@ -94,6 +96,7 @@ class BuyerRecentOrder(BaseModel):
     model_config = _FORBID
 
     order_id: UUID
+    number: int
     created_at: datetime
     status: Literal["in_progress", "completed", "cancelled"]
     total_amount: Price
@@ -127,6 +130,7 @@ class OpsQueuePreviewItem(BaseModel):
 
     conversation_id: UUID
     order_item_id: UUID
+    number: str
     effective_priority: str
     calculated_priority: str
     ops_override: str | None

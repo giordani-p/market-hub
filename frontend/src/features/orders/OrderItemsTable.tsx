@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { formatCurrencyBRL } from '../../lib/utils/format'
+import { formatOrderItemNumber } from '../../lib/utils/orderNumber'
 import type { BuyerOrderItem } from '../../types/order'
 import styles from './OrderItemsTable.module.css'
 
@@ -16,6 +17,7 @@ export function OrderItemsTable({ items, orderId }: OrderItemsTableProps) {
       {items.map((item) => {
         const content = (
           <>
+            <span className={styles.number}>{formatOrderItemNumber(item.number)}</span>
             <span className={styles.name}>{item.product.name}</span>
             <span className={styles.quantity}>x{item.quantity}</span>
             <span className={styles.price}>{formatCurrencyBRL(item.purchase_price)}</span>

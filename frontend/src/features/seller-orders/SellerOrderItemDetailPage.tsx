@@ -11,6 +11,7 @@ import { PageHeader } from '../../components/layout/PageHeader'
 import { ConversationPanel } from '../conversations/ConversationPanel'
 import { InternalCommentsPanel } from '../support/InternalCommentsPanel'
 import { formatCurrencyBRL, formatDate } from '../../lib/utils/format'
+import { formatOrderItemNumber } from '../../lib/utils/orderNumber'
 import { useAsync } from '../../lib/utils/useAsync'
 import { useMediaQuery } from '../../lib/utils/useMediaQuery'
 import { fetchSellerOrderItem } from './api'
@@ -31,7 +32,9 @@ export function SellerOrderItemDetailPage() {
   }
 
   const item = state.data
-  const conversation = <ConversationPanel itemId={item.id} viewerRole="seller" />
+  const conversation = (
+    <ConversationPanel itemId={item.id} itemNumber={item.number} viewerRole="seller" />
+  )
   const support = <InternalCommentsPanel itemId={item.id} />
 
   return (
@@ -55,7 +58,7 @@ export function SellerOrderItemDetailPage() {
             { term: 'Preço', value: formatCurrencyBRL(item.purchase_price) },
             {
               term: 'Pedido',
-              value: `#${item.order.id.slice(0, 8)} — ${formatDate(item.order.created_at)}`,
+              value: `${formatOrderItemNumber(item.number)} — ${formatDate(item.order.created_at)}`,
             },
             { term: 'Criado em', value: formatDate(item.created_at) },
           ]}

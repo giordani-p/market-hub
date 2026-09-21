@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.auth.dependencies import OpsUser, SellerUser
 from app.database import get_session
 from app.orders.access import load_seller_item
+from app.orders.numbers import PUBLIC_NUMBER_QUERY_PATTERN
 from app.orders.schemas import OrderItemStatus
 from app.support.access import load_ops_conversation, load_ops_item
 from app.support.comments import create_comment, list_comments
@@ -53,6 +54,9 @@ def list_order_items_for_ops(
     from_: Annotated[datetime | None, Query(alias="from")] = None,
     to: datetime | None = None,
     order_item_id: UUID | None = None,
+    public_number: Annotated[
+        str | None, Query(alias="number", pattern=PUBLIC_NUMBER_QUERY_PATTERN)
+    ] = None,
     seller_id: UUID | None = None,
 ) -> OpsOrderItemListResponse:
     return list_ops_order_items(
@@ -63,6 +67,7 @@ def list_order_items_for_ops(
         from_=from_,
         to=to,
         order_item_id=order_item_id,
+        public_number=public_number,
         seller_id=seller_id,
     )
 
@@ -127,6 +132,9 @@ def list_ops_conversation_queue(
     page_size: Annotated[int, Query(ge=1, le=100)] = 20,
     seller_id: UUID | None = None,
     order_item_id: UUID | None = None,
+    public_number: Annotated[
+        str | None, Query(alias="number", pattern=PUBLIC_NUMBER_QUERY_PATTERN)
+    ] = None,
     effective: Annotated[
         Literal["critical", "high", "medium", "low"] | None, Query(alias="effective_priority")
     ] = None,
@@ -137,6 +145,7 @@ def list_ops_conversation_queue(
         page_size=page_size,
         seller_id=seller_id,
         order_item_id=order_item_id,
+        public_number=public_number,
         effective=effective,
     )
 

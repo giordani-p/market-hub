@@ -5,6 +5,7 @@ import { Spinner } from '../../components/feedback/Spinner'
 import { Page } from '../../components/layout/Page'
 import { PageHeader } from '../../components/layout/PageHeader'
 import { formatDate } from '../../lib/utils/format'
+import { formatOrderNumber } from '../../lib/utils/orderNumber'
 import { useAsync } from '../../lib/utils/useAsync'
 import { fetchOrder } from './api'
 import { OrderItemsTable } from './OrderItemsTable'
@@ -25,11 +26,11 @@ export function OrderDetailPage() {
   return (
     <Page>
       <PageHeader
-        title={`Pedido #${order.id.slice(0, 8)}`}
+        title={`Pedido ${formatOrderNumber(order.number)}`}
         subtitle={`Criado em ${formatDate(order.created_at)}`}
         breadcrumbs={[
           { label: 'Meus pedidos', to: '/buyer/orders' },
-          { label: `#${order.id.slice(0, 8)}` },
+          { label: formatOrderNumber(order.number) },
         ]}
       />
       <Card>

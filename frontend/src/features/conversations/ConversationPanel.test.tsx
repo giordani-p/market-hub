@@ -44,6 +44,10 @@ function message(overrides: Partial<Message>): Message {
   }
 }
 
+function renderPanel(viewerRole: 'buyer' | 'seller' = 'seller') {
+  return render(<ConversationPanel itemId="item-1" itemNumber="1042-1" viewerRole={viewerRole} />)
+}
+
 describe('ConversationPanel', () => {
   afterEach(() => {
     vi.clearAllMocks()
@@ -51,9 +55,10 @@ describe('ConversationPanel', () => {
 
   it('offers to start a conversation when none is open', async () => {
     fetchItemConversations.mockResolvedValue([])
-    render(<ConversationPanel itemId="item-1" viewerRole="seller" />)
+    renderPanel()
 
-    expect(await screen.findByText('Nenhuma conversa neste pedido ainda.')).toBeInTheDocument()
+    expect(await screen.findByText('Nenhuma conversa no pedido #1042-1 ainda.')).toBeInTheDocument()
+    expect(screen.getByText('Pedido #1042-1')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Iniciar conversa' })).toBeInTheDocument()
   })
 
@@ -61,7 +66,7 @@ describe('ConversationPanel', () => {
     fetchItemConversations.mockResolvedValue([])
     openConversation.mockResolvedValue(openConv)
     fetchMessages.mockResolvedValue({ items: [], from: '', to: '', has_older: false })
-    render(<ConversationPanel itemId="item-1" viewerRole="seller" />)
+    renderPanel()
     await screen.findByRole('button', { name: 'Iniciar conversa' })
     const user = userEvent.setup()
 
@@ -82,13 +87,16 @@ describe('ConversationPanel', () => {
     sendMessage.mockResolvedValue(
       message({ id: 'm2', author_type: 'seller', content: 'Olá, tudo bem?' }),
     )
-    render(<ConversationPanel itemId="item-1" viewerRole="seller" />)
+    renderPanel()
 
     const buyerBubble = (await screen.findByText('Oi')).closest('[data-author]')
     expect(buyerBubble).toHaveAttribute('data-author', 'theirs')
 
     const user = userEvent.setup()
-    await user.type(screen.getByPlaceholderText('Escrever mensagem...'), 'Olá, tudo bem?')
+    await user.type(
+      screen.getByPlaceholderText('Escrever sobre o pedido #1042-1…'),
+      'Olá, tudo bem?',
+    )
     await user.click(screen.getByRole('button', { name: 'Enviar' }))
 
     expect(sendMessage).toHaveBeenCalledWith('conv-1', 'Olá, tudo bem?')
@@ -99,18 +107,21 @@ describe('ConversationPanel', () => {
   it('disables the composer once the conversation is closed', async () => {
     fetchItemConversations.mockResolvedValue([{ ...openConv, status: 'closed' }])
     fetchMessages.mockResolvedValue({ items: [], from: '', to: '', has_older: false })
-    render(<ConversationPanel itemId="item-1" viewerRole="seller" />)
+    renderPanel()
 
     expect(await screen.findByText('Esta conversa está encerrada.')).toBeInTheDocument()
-    expect(screen.queryByPlaceholderText('Escrever mensagem...')).not.toBeInTheDocument()
+    expect(
+      screen.queryByPlaceholderText('Escrever sobre o pedido #1042-1…'),
+    ).not.toBeInTheDocument()
   })
 
   it("shows the open conversation's priority", async () => {
     fetchItemConversations.mockResolvedValue([openConv])
     fetchMessages.mockResolvedValue({ items: [], from: '', to: '', has_older: false })
-    render(<ConversationPanel itemId="item-1" viewerRole="seller" />)
+    renderPanel()
 
     expect(await screen.findByText('Média')).toBeInTheDocument()
+    expect(screen.getByText('Pedido #1042-1')).toBeInTheDocument()
   })
 
   it('flips which side is "mine" when the viewer is the buyer', async () => {
@@ -121,7 +132,7 @@ describe('ConversationPanel', () => {
       to: '',
       has_older: false,
     })
-    render(<ConversationPanel itemId="item-1" viewerRole="buyer" />)
+    renderPanel('buyer')
 
     const bubble = (await screen.findByText('Oi')).closest('[data-author]')
     expect(bubble).toHaveAttribute('data-author', 'mine')

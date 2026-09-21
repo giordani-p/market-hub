@@ -16,6 +16,7 @@ from app.communication.priority import apply_calculated_priority, effective_prio
 from app.core.errors import InvalidTransitionError
 from app.core.events import ConversationPriorityChanged, record_event
 from app.orders.models import Order, OrderItem
+from app.orders.numbers import apply_public_number_filter, item_number
 from app.orders.schemas import BuyerSummary, ProductSummary
 from app.support.access import load_ops_item
 from app.support.comments import create_comment
@@ -147,6 +148,7 @@ def list_open_queue(
     page_size: int,
     seller_id: UUID | None,
     order_item_id: UUID | None,
+    public_number: str | None,
     effective: str | None,
 ) -> OpsConversationQueueResponse:
     stmt = _queue_statement()
@@ -154,6 +156,7 @@ def list_open_queue(
         stmt = stmt.where(Offer.seller_id == seller_id)
     if order_item_id is not None:
         stmt = stmt.where(Conversation.order_item_id == order_item_id)
+    stmt = apply_public_number_filter(stmt, public_number)
     if effective is not None:
         stmt = stmt.where(EffectivePriority == effective)
 
@@ -195,10 +198,10 @@ def _queue_item(
     buyer: User,
     seller: Seller,
 ) -> OpsConversationQueueItem:
-    del order
     base = to_ops_conversation(conversation)
     return OpsConversationQueueItem(
         **base.model_dump(),
+        number=item_number(order.number, item.line),
         seller=SellerSummary(id=seller.id, name=seller.name),
         product=ProductSummary(id=product.id, name=product.name),
         buyer=BuyerSummary(id=buyer.id, name=buyer.name),

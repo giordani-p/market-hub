@@ -4,6 +4,7 @@ export type OrderItemStatus = 'placed' | 'preparing' | 'in_transit' | 'delivered
 
 export interface BuyerOrderItem {
   id: string
+  number: string
   order_id: string
   offer_id: string
   quantity: number
@@ -16,6 +17,7 @@ export interface BuyerOrderItem {
 
 export interface Order {
   id: string
+  number: number
   buyer_id: string
   items: BuyerOrderItem[]
   created_at: string
@@ -29,6 +31,7 @@ export interface BuyerSummary {
 
 export interface SellerOrderItemListItem {
   order_item_id: string
+  number: string
   product: Pick<Product, 'id' | 'name'>
   quantity: number
   purchase_price: string
@@ -47,6 +50,7 @@ export interface SellerOrderItemListResponse {
 
 export interface SellerOrderItemDetail {
   id: string
+  number: string
   offer_id: string
   quantity: number
   purchase_price: string
@@ -55,7 +59,7 @@ export interface SellerOrderItemDetail {
   updated_at: string
   product: Product
   buyer: BuyerSummary
-  order: { id: string; created_at: string }
+  order: { id: string; number: number; created_at: string }
 }
 
 export interface SellerOrderItemFilters {
@@ -65,6 +69,7 @@ export interface SellerOrderItemFilters {
   from?: string
   to?: string
   orderItemId?: string
+  number?: string
 }
 
 export interface CheckoutItem {

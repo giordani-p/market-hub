@@ -16,6 +16,7 @@ vi.mock('../support/InternalCommentsPanel', () => ({
 
 const item: OpsOrderItemDetail = {
   id: 'item-1',
+  number: '1042-1',
   offer_id: 'offer-1',
   quantity: 1,
   purchase_price: '199.90',
@@ -25,7 +26,7 @@ const item: OpsOrderItemDetail = {
   product: { id: 'product-1', name: 'Tenis Runner', description: null },
   buyer: { id: 'buyer-1', name: 'Buyer Demo' },
   seller: { id: 'seller-1', name: 'Loja A' },
-  order: { id: 'order-1', created_at: '2026-01-01T00:00:00Z' },
+  order: { id: 'order-1', number: 1042, created_at: '2026-01-01T00:00:00Z' },
 }
 
 const conversation: OpsConversation = {

@@ -57,6 +57,7 @@ class SellerSummary(BaseModel):
 
 class OpsOrderItemListItem(BaseModel):
     order_item_id: UUID
+    number: str
     product: ProductSummary
     quantity: int
     purchase_price: str
@@ -76,6 +77,7 @@ class OpsOrderItemListResponse(BaseModel):
 
 class OpsOrderItemDetail(BaseModel):
     id: UUID
+    number: str
     offer_id: UUID
     quantity: int
     purchase_price: str
@@ -102,6 +104,7 @@ class OpsConversation(BaseModel):
 
 
 class OpsConversationQueueItem(OpsConversation):
+    number: str
     seller: SellerSummary
     product: ProductSummary
     buyer: BuyerSummary

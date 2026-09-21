@@ -16,6 +16,7 @@ function response(
     items: [
       {
         order_item_id: 'item-1',
+        number: '1042-1',
         product: { id: 'product-1', name: 'Tenis Runner' },
         quantity: 1,
         purchase_price: '199.90',
@@ -92,5 +93,37 @@ describe('SellerOrdersListPage', () => {
     )
 
     expect(await screen.findByText('Nenhum item encontrado.')).toBeInTheDocument()
+  })
+
+  it('sends the public number filter from the query string', async () => {
+    fetchSellerOrderItems.mockResolvedValue(response())
+    render(
+      <MemoryRouter initialEntries={['/seller/orders?number=1042']}>
+        <SellerOrdersListPage />
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => {
+      expect(fetchSellerOrderItems).toHaveBeenCalledWith(
+        expect.objectContaining({ number: '1042', page: 1 }),
+      )
+    })
+  })
+
+  it('does not send an incomplete lookup', async () => {
+    fetchSellerOrderItems.mockResolvedValue(response())
+    render(
+      <MemoryRouter initialEntries={['/seller/orders?number=1042-']}>
+        <SellerOrdersListPage />
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => {
+      expect(fetchSellerOrderItems).toHaveBeenCalled()
+    })
+    expect(fetchSellerOrderItems).toHaveBeenCalledWith(
+      expect.not.objectContaining({ number: '1042-' }),
+    )
+    expect(screen.getByText(/Informe o número do pedido/)).toBeInTheDocument()
   })
 })

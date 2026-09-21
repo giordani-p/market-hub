@@ -31,6 +31,7 @@ export interface SellerDashboardSummary {
 
 export interface SellerRecentOrderItem {
   order_item_id: string
+  number: string
   order_id: string
   product: { id: string; name: string }
   buyer: BuyerSummary
@@ -54,6 +55,7 @@ export interface BuyerDashboardSummary {
 
 export interface BuyerRecentOrderItem {
   order_item_id: string
+  number: string
   product: { id: string; name: string }
   quantity: number
   status: OrderItemStatus
@@ -61,6 +63,7 @@ export interface BuyerRecentOrderItem {
 
 export interface BuyerRecentOrder {
   order_id: string
+  number: number
   created_at: string
   status: BuyerOrderProjectionStatus
   total_amount: string
@@ -82,6 +85,7 @@ export interface OpsDashboardSummary {
 export interface OpsQueuePreviewItem {
   conversation_id: string
   order_item_id: string
+  number: string
   effective_priority: EffectivePriority
   calculated_priority: string
   ops_override: string | null

@@ -14,6 +14,7 @@ import { Page } from '../../components/layout/Page'
 import { PageHeader } from '../../components/layout/PageHeader'
 import { Section } from '../../components/layout/Section'
 import { formatCurrencyBRL, formatDateTime } from '../../lib/utils/format'
+import { formatOrderItemNumber } from '../../lib/utils/orderNumber'
 import type { SellerDashboard } from '../../types/dashboard'
 import type { OrderItemStatus } from '../../types/order'
 import { ORDER_ITEM_STATUS_LABELS } from '../orders/status'
@@ -76,6 +77,7 @@ export function SellerDashboardView({ data }: { data: SellerDashboard }) {
           <Table caption="Itens de pedido mais recentes">
             <TableHead>
               <TableRow>
+                <TableHeaderCell>Pedido</TableHeaderCell>
                 <TableHeaderCell>Produto</TableHeaderCell>
                 <TableHeaderCell>Comprador</TableHeaderCell>
                 <TableHeaderCell numeric>Qtd</TableHeaderCell>
@@ -87,6 +89,7 @@ export function SellerDashboardView({ data }: { data: SellerDashboard }) {
             <TableBody>
               {recent.order_items.map((item) => (
                 <TableRow key={item.order_item_id} linked>
+                  <TableCell label="Pedido">{formatOrderItemNumber(item.number)}</TableCell>
                   <TableCell label="Produto">
                     <TableRowLink to={`/seller/orders/${item.order_item_id}`}>
                       {item.product.name}
