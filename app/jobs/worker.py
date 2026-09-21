@@ -37,7 +37,7 @@ def process_once(
         logger.exception("job failed")
         return True
     queue.delete(message.receipt_handle)
-    logger.info("job completed")
+    logger.info("job completed type=%s", job.job_type)
     return True
 
 
