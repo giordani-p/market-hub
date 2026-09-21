@@ -7,7 +7,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.catalog.schemas import Price, format_price
+from app.catalog.schemas import Price, SellerSummary, format_price
 
 OrderItemStatus = Literal["placed", "preparing", "in_transit", "delivered", "cancelled"]
 OrderItemForwardStatus = Literal["placed", "preparing", "in_transit", "delivered"]
@@ -66,7 +66,7 @@ class ProductSummary(BaseModel):
 
 
 class BuyerOrderItem(BaseModel):
-    """Order Item na visao do Buyer, com o produto exibido na compra."""
+    """Order Item na visao do Buyer, com o produto e a loja da compra."""
 
     id: UUID
     number: str
@@ -78,6 +78,7 @@ class BuyerOrderItem(BaseModel):
     created_at: datetime
     updated_at: datetime
     product: ProductSummary
+    seller: SellerSummary
 
 
 class OrderResponse(BaseModel):

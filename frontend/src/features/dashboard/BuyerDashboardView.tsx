@@ -72,6 +72,7 @@ export function BuyerDashboardView({ data }: { data: BuyerDashboard }) {
                         {item.product.name}
                       </Link>
                       <span className={styles.orderMeta}>{formatOrderItemNumber(item.number)}</span>
+                      <span className={styles.orderMeta}>{item.seller.name}</span>
                       <span className={styles.orderMeta}>x{item.quantity}</span>
                       <StatusBadge status={item.status} />
                     </li>

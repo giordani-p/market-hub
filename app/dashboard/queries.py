@@ -6,8 +6,8 @@ from uuid import UUID
 from sqlalchemy import exists, func, select
 from sqlalchemy.orm import Session
 
-from app.catalog.models import Offer, Product
-from app.catalog.schemas import format_price
+from app.catalog.models import Offer, Product, Seller
+from app.catalog.schemas import SellerSummary, format_price
 from app.communication.models import Conversation
 from app.dashboard.projection import (
     ACTIVE_ITEM_STATUSES,
@@ -150,36 +150,38 @@ def _buyer_recent_orders(session: Session, orders: list[Order]) -> list[BuyerRec
         return []
     order_ids = [order.id for order in orders]
     rows = session.execute(
-        select(OrderItem, Product)
+        select(OrderItem, Product, Seller)
         .join(Offer, OrderItem.offer_id == Offer.id)
         .join(Product, Offer.product_id == Product.id)
+        .join(Seller, Offer.seller_id == Seller.id)
         .where(OrderItem.order_id.in_(order_ids))
         .order_by(OrderItem.created_at)
     ).all()
-    grouped: dict[UUID, list[tuple[OrderItem, Product]]] = {}
-    for item, product in rows:
-        grouped.setdefault(item.order_id, []).append((item, product))
+    grouped: dict[UUID, list[tuple[OrderItem, Product, Seller]]] = {}
+    for item, product, seller in rows:
+        grouped.setdefault(item.order_id, []).append((item, product, seller))
     recent: list[BuyerRecentOrder] = []
     for order in orders:
-        pairs = grouped.get(order.id, [])
+        triples = grouped.get(order.id, [])
         recent.append(
             BuyerRecentOrder(
                 order_id=order.id,
                 number=order.number,
                 created_at=order.created_at,
-                status=buyer_order_projection_status([item.status for item, _ in pairs]),
+                status=buyer_order_projection_status([item.status for item, _, _ in triples]),
                 total_amount=format_order_total(
-                    [(item.purchase_price, item.quantity) for item, _ in pairs]
+                    [(item.purchase_price, item.quantity) for item, _, _ in triples]
                 ),
                 items=[
                     BuyerRecentOrderItem(
                         order_item_id=item.id,
                         number=item_number(order.number, item.line),
                         product=ProductSummary(id=product.id, name=product.name),
+                        seller=SellerSummary(id=seller.id, name=seller.name),
                         quantity=item.quantity,
                         status=item.status,
                     )
-                    for item, product in pairs
+                    for item, product, seller in triples
                 ],
             )
         )

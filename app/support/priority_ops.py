@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.auth.models import User
 from app.catalog.models import Offer, Product, Seller
-from app.catalog.schemas import format_price
+from app.catalog.schemas import SellerSummary, format_price
 from app.communication.lifecycle import utcnow
 from app.communication.models import Conversation
 from app.communication.priority import apply_calculated_priority, effective_priority
@@ -24,7 +24,6 @@ from app.support.schemas import (
     OpsConversation,
     OpsConversationQueueItem,
     OpsConversationQueueResponse,
-    SellerSummary,
 )
 
 EffectivePriority = case(

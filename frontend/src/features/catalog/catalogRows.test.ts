@@ -9,6 +9,7 @@ function product(id: string, name = `Produto ${id}`): Product {
 function offer(overrides: Partial<Offer> & { id: string; product_id: string }): Offer {
   return {
     seller_id: 'seller-1',
+    seller: { id: 'seller-1', name: 'Loja A' },
     price: '100.00',
     stock: 5,
     available: true,
@@ -24,6 +25,7 @@ describe('deriveCatalogRows', () => {
     expect(row.lowestPrice).toBeNull()
     expect(row.highestPrice).toBeNull()
     expect(row.sellerCount).toBe(0)
+    expect(row.sellerNames).toEqual([])
     expect(row.offerCount).toBe(0)
   })
 
@@ -63,12 +65,18 @@ describe('deriveCatalogRows', () => {
       [
         offer({ id: 'o1', product_id: 'p1', seller_id: 'seller-1' }),
         offer({ id: 'o2', product_id: 'p1', seller_id: 'seller-1', price: '90.00' }),
-        offer({ id: 'o3', product_id: 'p1', seller_id: 'seller-2' }),
+        offer({
+          id: 'o3',
+          product_id: 'p1',
+          seller_id: 'seller-2',
+          seller: { id: 'seller-2', name: 'Tech Hub' },
+        }),
       ],
     )
 
     expect(row.offerCount).toBe(3)
     expect(row.sellerCount).toBe(2)
+    expect(row.sellerNames).toEqual(['Loja A', 'Tech Hub'])
   })
 
   it('keeps the order of the products it received', () => {

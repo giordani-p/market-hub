@@ -50,6 +50,7 @@ export function BuyerOrderItemDetailPage() {
         <DetailList
           entries={[
             { term: 'Quantidade', value: item.quantity },
+            { term: 'Loja', value: item.seller.name },
             { term: 'Preço', value: formatCurrencyBRL(item.purchase_price) },
             {
               term: 'Pedido',

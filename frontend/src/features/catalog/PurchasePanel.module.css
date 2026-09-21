@@ -44,6 +44,11 @@
   font-weight: var(--font-weight-semibold);
 }
 
+.offerSeller {
+  color: var(--color-text);
+  font-size: var(--font-size-body-sm);
+}
+
 .offerStock {
   margin-left: auto;
   color: var(--color-muted);

@@ -25,6 +25,10 @@
   min-width: 0;
 }
 
+.seller {
+  color: var(--color-muted);
+}
+
 .number {
   color: var(--color-muted);
   font-variant-numeric: tabular-nums;

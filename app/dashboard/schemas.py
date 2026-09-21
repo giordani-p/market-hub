@@ -6,9 +6,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.catalog.schemas import Price
+from app.catalog.schemas import Price, SellerSummary
 from app.orders.schemas import BuyerSummary, ProductSummary
-from app.support.schemas import SellerSummary
 
 _FORBID = ConfigDict(extra="forbid")
 
@@ -88,6 +87,7 @@ class BuyerRecentOrderItem(BaseModel):
     order_item_id: UUID
     number: str
     product: ProductSummary
+    seller: SellerSummary
     quantity: int = Field(ge=1)
     status: str
 

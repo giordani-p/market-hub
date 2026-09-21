@@ -14,6 +14,8 @@ export interface CatalogRow {
   highestPrice: string | null
   /** Lojas distintas com oferta comprável. */
   sellerCount: number
+  /** Nomes das lojas, na ordem em que a primeira oferta de cada uma aparece. */
+  sellerNames: string[]
   offerCount: number
   inStock: boolean
 }
@@ -50,6 +52,7 @@ export function deriveCatalogRows(products: Product[], offers: Offer[]): Catalog
         lowestPrice: null,
         highestPrice: null,
         sellerCount: 0,
+        sellerNames: [],
         offerCount: 0,
         inStock: false,
       }
@@ -57,9 +60,9 @@ export function deriveCatalogRows(products: Product[], offers: Offer[]): Catalog
 
     let lowest = purchasable[0]
     let highest = purchasable[0]
-    const sellers = new Set<string>()
+    const sellers = new Map<string, string>()
     for (const offer of purchasable) {
-      sellers.add(offer.seller_id)
+      sellers.set(offer.seller_id, offer.seller.name)
       if (Number(offer.price) < Number(lowest.price)) {
         lowest = offer
       }
@@ -73,6 +76,7 @@ export function deriveCatalogRows(products: Product[], offers: Offer[]): Catalog
       lowestPrice: lowest.price,
       highestPrice: highest.price,
       sellerCount: sellers.size,
+      sellerNames: [...sellers.values()],
       offerCount: purchasable.length,
       inStock: true,
     }

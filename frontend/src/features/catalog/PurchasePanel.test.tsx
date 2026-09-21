@@ -12,12 +12,27 @@ const offer: Offer = {
   id: 'offer-1',
   product_id: 'product-1',
   seller_id: 'seller-1',
+  seller: { id: 'seller-1', name: 'Loja A' },
   price: '299.00',
   stock: 2,
   available: true,
 }
 
 describe('PurchasePanel', () => {
+  it('shows the shop name of each offer', () => {
+    const other: Offer = {
+      ...offer,
+      id: 'offer-2',
+      seller_id: 'seller-2',
+      seller: { id: 'seller-2', name: 'Tech Hub' },
+      price: '279.00',
+    }
+    render(<PurchasePanel offers={[offer, other]} onPurchased={vi.fn()} />)
+
+    expect(screen.getByText('Loja A')).toBeInTheDocument()
+    expect(screen.getByText('Tech Hub')).toBeInTheDocument()
+  })
+
   it('caps the quantity at the offer stock', async () => {
     render(<PurchasePanel offers={[offer]} onPurchased={vi.fn()} />)
     const user = userEvent.setup()

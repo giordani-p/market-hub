@@ -19,6 +19,7 @@ export function OrderItemsTable({ items, orderId }: OrderItemsTableProps) {
           <>
             <span className={styles.number}>{formatOrderItemNumber(item.number)}</span>
             <span className={styles.name}>{item.product.name}</span>
+            <span className={styles.seller}>{item.seller.name}</span>
             <span className={styles.quantity}>x{item.quantity}</span>
             <span className={styles.price}>{formatCurrencyBRL(item.purchase_price)}</span>
             <StatusBadge status={item.status} />

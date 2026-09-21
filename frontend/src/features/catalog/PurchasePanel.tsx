@@ -104,6 +104,7 @@ export function PurchasePanel({ offers, onPurchased }: PurchasePanelProps) {
                   checked={selected}
                   onChange={() => selectOffer(offer)}
                 />
+                <span className={styles.offerSeller}>{offer.seller.name}</span>
                 <span className={styles.offerPrice}>{formatCurrencyBRL(offer.price)}</span>
                 <span className={styles.offerStock}>{offer.stock} em estoque</span>
               </label>

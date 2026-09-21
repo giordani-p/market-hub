@@ -46,6 +46,7 @@ def test_create_offer_uses_authenticated_seller(catalog_client: TestClient) -> N
     body = response.json()
     assert body["product_id"] == product["id"]
     assert body["seller_id"] == str(SELLER_A_ID)
+    assert body["seller"] == {"id": str(SELLER_A_ID), "name": "Loja A"}
     assert body["price"] == "299.00"
     assert body["stock"] == 10
     assert body["available"] is True
@@ -156,6 +157,7 @@ def test_get_offer(catalog_client: TestClient) -> None:
     response = catalog_client.get(f"/v1/offers/{offer['id']}")
     assert response.status_code == 200
     assert response.json()["id"] == offer["id"]
+    assert response.json()["seller"] == {"id": str(SELLER_A_ID), "name": "Loja A"}
 
 
 def test_list_offers(catalog_client: TestClient) -> None:
@@ -186,6 +188,7 @@ def test_list_offers_filtered_by_seller(catalog_client: TestClient) -> None:
     body = response.json()
     assert [item["id"] for item in body] == [of_a["id"]]
     assert body[0]["seller_id"] == str(SELLER_A_ID)
+    assert body[0]["seller"] == {"id": str(SELLER_A_ID), "name": "Loja A"}
 
 
 def test_delete_offer(catalog_client: TestClient) -> None:

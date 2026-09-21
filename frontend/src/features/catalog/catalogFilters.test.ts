@@ -15,6 +15,7 @@ function row(overrides: Partial<CatalogRow> & { id: string }): CatalogRow {
     lowestPrice: '100.00',
     highestPrice: '100.00',
     sellerCount: 1,
+    sellerNames: ['Loja A'],
     offerCount: 1,
     inStock: true,
     ...rest,
@@ -51,7 +52,7 @@ describe('applyCatalogFilters', () => {
       product: { id: 'p2', name: 'Tênis casual', description: 'Solado de borracha' },
       lowestPrice: '249.00',
     }),
-    row({ id: 'p3', lowestPrice: null, highestPrice: null, inStock: false, sellerCount: 0 }),
+    row({ id: 'p3', lowestPrice: null, highestPrice: null, inStock: false, sellerCount: 0, sellerNames: [] }),
   ]
 
   it('matches the search without accent, in either direction', () => {

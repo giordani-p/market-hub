@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.auth.models import User
 from app.catalog.models import Offer, Product, Seller
-from app.catalog.schemas import format_price
+from app.catalog.schemas import SellerSummary, format_price
 from app.orders.models import Order, OrderItem
 from app.orders.numbers import apply_public_number_filter, item_number
 from app.orders.schemas import BuyerSummary, OrderSummary, ProductDetailSummary, ProductSummary
@@ -18,7 +18,6 @@ from app.support.schemas import (
     OpsOrderItemDetail,
     OpsOrderItemListItem,
     OpsOrderItemListResponse,
-    SellerSummary,
 )
 
 
