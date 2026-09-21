@@ -1,7 +1,7 @@
 # Estado atual do projeto
 
-- **Versao**: 1.1.0
-- **Fase**: Solucao do desafio — COMPLETE (backend P1–P7 / P6.3 + frontend F0–F9); numero publico de Pedido
+- **Versao**: 1.2.0
+- **Fase**: Solucao do desafio — COMPLETE (backend P1–P7 / P6.3 + frontend F0–F9); nome da loja na oferta e no pedido do Buyer
 - **Commit de referencia**: 50ed75e
 - **Repositório**: https://github.com/giordani-p/market-hub
 
@@ -97,14 +97,14 @@ Rotas implementadas, todas sob o prefixo `/v1`:
 | `GET /v1/products/{product_id}`                                 | `Product`                                                          |
 | `PATCH /v1/products/{product_id}`                               | `Product`                                                          |
 | `DELETE /v1/products/{product_id}`                              | `204`; `409` se o produto ainda tiver ofertas                      |
-| `GET /v1/offers`                                                | array de `Offer`; filtro opcional `?seller_id=` (publico)          |
+| `GET /v1/offers`                                                | array de `Offer` (`seller_id` + `seller` `{id, name}`); filtro opcional `?seller_id=` (publico) |
 | `POST /v1/offers`                                               | `201` + `Offer`; `seller_id` vem do JWT de seller                  |
 | `GET /v1/offers/{offer_id}`                                     | `Offer`                                                            |
 | `PATCH /v1/offers/{offer_id}`                                   | `Offer` do seller autenticado                                      |
 | `DELETE /v1/offers/{offer_id}`                                  | `204`; `409` se houver order items                                 |
 | `POST /v1/orders`                                               | checkout atomico; `201` + `Order` ou `409 checkout_rejected`       |
-| `GET /v1/orders`                                                | orders do buyer autenticado, items com produto (`BuyerOrderItem`)  |
-| `GET /v1/orders/{order_id}`                                     | `Order` do buyer autenticado, items com produto (`BuyerOrderItem`) |
+| `GET /v1/orders`                                                | orders do buyer autenticado, items com produto e loja (`BuyerOrderItem`) |
+| `GET /v1/orders/{order_id}`                                     | `Order` do buyer autenticado, items com produto e loja (`BuyerOrderItem`) |
 | `GET /v1/order-items`                                           | envelope paginado dos items do seller autenticado                  |
 | `GET /v1/order-items/{item_id}`                                 | detalhe do buyer ou do seller do item (`product`, `buyer`, `order`, `offer_id`) |
 | `PATCH /v1/order-items/{item_id}`                               | avanca status no fluxo; mesmo status e idempotente                 |
@@ -131,7 +131,7 @@ Rotas implementadas, todas sob o prefixo `/v1`:
 | `GET /v1/notifications/unread-count`                            | `{ unread_count }` do usuario autenticado                          |
 | `PATCH /v1/notifications/{notification_id}/read`                | `200` Notification; alheia → `404`                                 |
 | `PATCH /v1/notifications/read-all`                              | `204`; idempotente                                                 |
-| `GET /v1/dashboard`                                             | projecao por papel (`seller`/`buyer`/`ops`); empty state e `200`   |
+| `GET /v1/dashboard`                                             | projecao por papel (`seller`/`buyer`/`ops`); recents do Buyer incluem `seller`; empty state e `200` |
 
 `GET /v1/order-items` aceita `page`, `page_size` (padrao 20, maximo 100),
 `status`, `from`, `to`, `order_item_id` (UUID) e `number` (pedido `1042` ou
@@ -320,8 +320,8 @@ fechada**, nao uma fase de backend em aberto:
 - **Filtro por categoria** — `Product` nao tem o campo. O agrupamento em
   seis segmentos existe so em `app/catalog/demo.py`. Se o dominio crescer:
   `category` como enum fixo no `Product`, sem tabela nova.
-- **Filtro e nome de loja** — `OfferResponse` traz so `seller_id`, e nao ha
-  rota de sellers registrada em `app/main.py`.
+- **Filtro por loja** — o nome da loja entra em `Offer.seller` e no pedido
+  do Buyer; nao ha rota de sellers nem query de filtro por loja no catalogo.
 - **Imagem de produto** — nao ha `image_url` nem estrategia de asset.
 - **Ordenar por novidade** — `Product` nao tem `created_at`.
 - **Filtro e paginacao no servidor** — `GET /v1/products` e
@@ -350,9 +350,12 @@ fechada**, nao uma fase de backend em aberto:
 
 ## Decisoes de contrato e de stack ja tomadas
 
-- `BuyerOrderItem` (usado so em `Order.items`) inclui `product` (`ProductSummary`).
-  O `OrderItem` generico (resposta de `PATCH`/`cancel` de Order Item) continua sem
-  produto: e um schema a parte, nao o mesmo reaproveitado.
+- `BuyerOrderItem` (usado so em `Order.items`) inclui `product` (`ProductSummary`)
+  e `seller` (`SellerSummary`). O `OrderItem` generico (resposta de
+  `PATCH`/`cancel` de Order Item) continua sem produto nem loja: e um schema
+  a parte, nao o mesmo reaproveitado.
+- `Offer` expoe `seller_id` e `seller` `{id, name}` (`SellerSummary` em
+  `app/catalog/schemas.py`). Sem rota `GET /v1/sellers`.
 - Atualizacao apenas por `PATCH`, com todos os campos opcionais. Nao ha `PUT`.
 - `GET /v1/order-items/{item_id}` aceita Buyer e Seller (desde o F5 do
   frontend). Buyer so acessa o proprio item (`Order.buyer_id`), so leitura
@@ -499,6 +502,12 @@ de produto em `112515a`. Quem for estender o que esta em
 por uma spec nova.
 
 ## Historico de versoes
+
+- **1.2.0** — Nome da loja na compra e no pedido do Buyer. `Offer`,
+  `BuyerOrderItem` e `BuyerRecentOrderItem` passam a expor `seller`
+  `{id, name}` (`SellerSummary` no catalogo). A UI mostra a loja no card
+  do catalogo, na escolha da oferta, no pedido e nos recents do dashboard.
+  Sem rota de sellers e sem filtro por loja. `seller_id` permanece.
 
 - **1.1.0** — Numero publico de Pedido e Item: `Order.number` sequencial a
   partir de 1001 e item `{number}-{line}` (`1042-1`). UUID permanece PK e

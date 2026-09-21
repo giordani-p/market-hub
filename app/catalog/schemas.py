@@ -31,6 +31,13 @@ class ProductResponse(BaseModel):
     description: str | None
 
 
+class SellerSummary(BaseModel):
+    """Identidade publica da loja, reusada em Offer, pedido do Buyer e Ops."""
+
+    id: UUID
+    name: str
+
+
 class OfferCreate(BaseModel):
     product_id: UUID
     price: Price
@@ -50,6 +57,7 @@ class OfferResponse(BaseModel):
     id: UUID
     product_id: UUID
     seller_id: UUID
+    seller: SellerSummary
     price: str
     stock: int
     available: bool

@@ -159,6 +159,7 @@ Senha de todos: o valor de `SEED_PASSWORD`.
 | ------ | ---------------------- | -------------------------------------------------- |
 | Seller | `loja-a@example.com`   | pedidos, conversas, notificações, ofertas          |
 | Seller | `loja-b@example.com`   | segundo vendedor                                   |
+| Seller | `techhub@example.com`  | terceira loja (ofertas de tech, ex. Fone Bluetooth) |
 | Buyer  | `buyer@example.com`    | catálogo, pedidos, conversa                        |
 | Ops    | `ops@example.com`      | fila e override `critical`                         |
 

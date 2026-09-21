@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.auth.models import User, UserRole
 from app.auth.passwords import hash_password
+from app.catalog.seed import SELLER_A_ID
 from tests.conftest import TEST_SEED_PASSWORD
 from tests.integration.auth_helpers import (
     buyer_headers,
@@ -210,6 +211,8 @@ def test_buyer_counts_order_once_and_completed(catalog_client: TestClient) -> No
     assert recent["total_amount"] == "25.00"
     assert len(recent["items"]) == 2
     assert "purchase_price" not in recent["items"][0]
+    loja_a = {"id": str(SELLER_A_ID), "name": "Loja A"}
+    assert all(item["seller"] == loja_a for item in recent["items"])
 
     for item in order["items"]:
         _advance(catalog_client, item["id"], seller, "preparing", "in_transit", "delivered")

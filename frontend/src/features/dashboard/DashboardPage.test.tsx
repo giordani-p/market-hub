@@ -91,6 +91,7 @@ describe('DashboardPage', () => {
                 order_item_id: 'item-1',
                 number: '1042-1',
                 product: { id: 'product-1', name: 'Tenis Runner' },
+                seller: { id: 'seller-1', name: 'Loja A' },
                 quantity: 1,
                 status: 'preparing',
               },
@@ -107,6 +108,7 @@ describe('DashboardPage', () => {
     )
 
     expect(await screen.findByText('Tenis Runner')).toBeInTheDocument()
+    expect(screen.getByText('Loja A')).toBeInTheDocument()
     expect(screen.getByText('Em preparação')).toBeInTheDocument()
     expect(screen.queryByText('Em andamento')).not.toBeInTheDocument()
   })

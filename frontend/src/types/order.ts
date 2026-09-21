@@ -1,4 +1,4 @@
-import type { Product } from './catalog'
+import type { Product, SellerSummary } from './catalog'
 
 export type OrderItemStatus = 'placed' | 'preparing' | 'in_transit' | 'delivered' | 'cancelled'
 
@@ -13,6 +13,7 @@ export interface BuyerOrderItem {
   created_at: string
   updated_at: string
   product: Pick<Product, 'id' | 'name'>
+  seller: SellerSummary
 }
 
 export interface Order {

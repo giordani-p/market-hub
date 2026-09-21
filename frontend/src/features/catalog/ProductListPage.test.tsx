@@ -20,6 +20,7 @@ const offer: Offer = {
   id: 'offer-1',
   product_id: 'product-1',
   seller_id: 'seller-1',
+  seller: { id: 'seller-1', name: 'Loja A' },
   price: '199.90',
   stock: 3,
   available: true,
@@ -48,18 +49,18 @@ describe('catalog pages', () => {
     fetchProduct.mockReset()
   })
 
-  it('shows the lowest available price and how many stores carry the product', async () => {
+  it('shows the lowest available price and the stores that carry the product', async () => {
     fetchProducts.mockResolvedValue([product])
     fetchOffers.mockResolvedValue([
       offer,
-      { ...offer, id: 'offer-2', seller_id: 'seller-2', price: '150.00' },
+      { ...offer, id: 'offer-2', seller_id: 'seller-2', seller: { id: 'seller-2', name: 'Tech Hub' }, price: '150.00' },
     ])
 
     renderList()
 
     expect(await screen.findByText('Tenis Runner')).toBeInTheDocument()
     expect(screen.getByText('R$ 150,00')).toBeInTheDocument()
-    expect(screen.getByText('em 2 lojas')).toBeInTheDocument()
+    expect(screen.getByText('Loja A · Tech Hub')).toBeInTheDocument()
   })
 
   it('marks a product with no purchasable offer as out of stock', async () => {

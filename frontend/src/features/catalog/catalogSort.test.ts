@@ -8,6 +8,7 @@ function row(id: string, name: string, lowestPrice: string | null): CatalogRow {
     lowestPrice,
     highestPrice: lowestPrice,
     sellerCount: lowestPrice ? 1 : 0,
+    sellerNames: lowestPrice ? ['Loja A'] : [],
     offerCount: lowestPrice ? 1 : 0,
     inStock: lowestPrice !== null,
   }

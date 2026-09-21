@@ -14,6 +14,7 @@ const item: BuyerOrderItem = {
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',
   product: { id: 'product-1', name: 'Tenis XYZ' },
+  seller: { id: 'seller-1', name: 'Loja A' },
 }
 
 describe('OrderItemsTable', () => {
@@ -21,6 +22,7 @@ describe('OrderItemsTable', () => {
     render(<OrderItemsTable items={[item]} />)
 
     expect(screen.getByText('Tenis XYZ')).toBeInTheDocument()
+    expect(screen.getByText('Loja A')).toBeInTheDocument()
     expect(screen.getByText('#1042-1')).toBeInTheDocument()
     expect(screen.getByText('x3')).toBeInTheDocument()
     expect(screen.getByText('R$ 150,00')).toBeInTheDocument()

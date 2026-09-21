@@ -11,14 +11,33 @@ from sqlalchemy.orm import Session
 
 from app.auth.dependencies import SellerUser
 from app.auth.models import User
-from app.catalog.models import Offer, Product
-from app.catalog.schemas import OfferCreate, OfferResponse, OfferUpdate
+from app.catalog.models import Offer, Product, Seller
+from app.catalog.schemas import OfferCreate, OfferResponse, OfferUpdate, SellerSummary
 from app.core.errors import ForbiddenError, ResourceInUseError, ResourceNotFoundError
 from app.database import get_session
 
 SessionDep = Annotated[Session, Depends(get_session)]
-
 router = APIRouter(tags=["offers"])
+
+
+def offer_response(offer: Offer, seller: Seller) -> OfferResponse:
+    """Monta a oferta com a loja dona, sem depender de relationship."""
+    return OfferResponse(
+        id=offer.id,
+        product_id=offer.product_id,
+        seller_id=offer.seller_id,
+        seller=SellerSummary(id=seller.id, name=seller.name),
+        price=offer.price,
+        stock=offer.stock,
+        available=offer.available,
+    )
+
+
+def _seller_for_offer(session: Session, offer: Offer) -> Seller:
+    seller = session.get(Seller, offer.seller_id)
+    if seller is None:
+        raise ResourceNotFoundError("Seller not found")
+    return seller
 
 
 def _require_owned_offer(offer: Offer | None, seller: User) -> Offer:
@@ -30,11 +49,11 @@ def _require_owned_offer(offer: Offer | None, seller: User) -> Offer:
 
 
 @router.get("/offers", response_model=list[OfferResponse], summary="List offers")
-def list_offers(session: SessionDep, seller_id: UUID | None = None) -> list[Offer]:
-    stmt = select(Offer)
+def list_offers(session: SessionDep, seller_id: UUID | None = None) -> list[OfferResponse]:
+    stmt = select(Offer, Seller).join(Seller, Offer.seller_id == Seller.id)
     if seller_id is not None:
         stmt = stmt.where(Offer.seller_id == seller_id)
-    return list(session.scalars(stmt).all())
+    return [offer_response(offer, seller) for offer, seller in session.execute(stmt).all()]
 
 
 @router.post(
@@ -43,7 +62,7 @@ def list_offers(session: SessionDep, seller_id: UUID | None = None) -> list[Offe
     status_code=status.HTTP_201_CREATED,
     summary="Create an offer",
 )
-def create_offer(payload: OfferCreate, seller: SellerUser, session: SessionDep) -> Offer:
+def create_offer(payload: OfferCreate, seller: SellerUser, session: SessionDep) -> OfferResponse:
     if session.get(Product, payload.product_id) is None:
         raise ResourceNotFoundError("Product not found")
 
@@ -56,21 +75,21 @@ def create_offer(payload: OfferCreate, seller: SellerUser, session: SessionDep) 
     )
     session.add(offer)
     session.flush()
-    return offer
+    return offer_response(offer, _seller_for_offer(session, offer))
 
 
 @router.get("/offers/{offer_id}", response_model=OfferResponse, summary="Get an offer")
-def get_offer(offer_id: UUID, session: SessionDep) -> Offer:
+def get_offer(offer_id: UUID, session: SessionDep) -> OfferResponse:
     offer = session.get(Offer, offer_id)
     if offer is None:
         raise ResourceNotFoundError("Offer not found")
-    return offer
+    return offer_response(offer, _seller_for_offer(session, offer))
 
 
 @router.patch("/offers/{offer_id}", response_model=OfferResponse, summary="Update an offer")
 def update_offer(
     offer_id: UUID, payload: OfferUpdate, seller: SellerUser, session: SessionDep
-) -> Offer:
+) -> OfferResponse:
     offer = _require_owned_offer(session.get(Offer, offer_id), seller)
 
     updates = payload.model_dump(exclude_unset=True)
@@ -79,7 +98,7 @@ def update_offer(
     for field, value in updates.items():
         setattr(offer, field, value)
     session.flush()
-    return offer
+    return offer_response(offer, _seller_for_offer(session, offer))
 
 
 @router.delete(

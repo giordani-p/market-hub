@@ -66,3 +66,8 @@
 .offerPrice {
   font-weight: var(--font-weight-semibold);
 }
+
+.offerSeller {
+  flex: 1 1 8rem;
+  min-width: 0;
+}

@@ -1,6 +1,6 @@
+import type { SellerSummary } from './catalog'
 import type { EffectivePriority } from './conversation'
 import type { BuyerSummary, OrderItemStatus } from './order'
-import type { SellerSummary } from './ops'
 
 export type BuyerOrderProjectionStatus = 'in_progress' | 'completed' | 'cancelled'
 
@@ -57,6 +57,7 @@ export interface BuyerRecentOrderItem {
   order_item_id: string
   number: string
   product: { id: string; name: string }
+  seller: SellerSummary
   quantity: number
   status: OrderItemStatus
 }

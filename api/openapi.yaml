@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: Market Hub API
   description: Market Hub backend. Catalog, Order, Communication, Support/Ops, Notifications and Dashboard.
-  version: 1.1.0
+  version: 1.2.0
 paths:
   /v1/health:
     get:
@@ -1248,7 +1248,7 @@ components:
           example: ok
         version:
           type: string
-          example: 1.1.0
+          example: 1.2.0
 
     ErrorResponse:
       description: Business error raised by the application.
@@ -1395,6 +1395,7 @@ components:
         - id
         - product_id
         - seller_id
+        - seller
         - price
         - stock
         - available
@@ -1408,6 +1409,8 @@ components:
         seller_id:
           type: string
           format: uuid
+        seller:
+          $ref: "#/components/schemas/SellerSummary"
         price:
           $ref: "#/components/schemas/Price"
         stock:
@@ -1562,7 +1565,7 @@ components:
           format: date-time
 
     BuyerOrderItem:
-      description: Order Item na visao do Buyer, com o produto exibido na compra.
+      description: Order Item na visao do Buyer, com o produto e a loja da compra.
       type: object
       required:
         - id
@@ -1575,6 +1578,7 @@ components:
         - created_at
         - updated_at
         - product
+        - seller
       properties:
         id:
           type: string
@@ -1604,6 +1608,8 @@ components:
           format: date-time
         product:
           $ref: "#/components/schemas/ProductSummary"
+        seller:
+          $ref: "#/components/schemas/SellerSummary"
 
     OrderItem:
       type: object
@@ -2541,6 +2547,7 @@ components:
         - order_item_id
         - number
         - product
+        - seller
         - quantity
         - status
       properties:
@@ -2553,6 +2560,8 @@ components:
           example: "1042-1"
         product:
           $ref: "#/components/schemas/ProductSummary"
+        seller:
+          $ref: "#/components/schemas/SellerSummary"
         quantity:
           type: integer
           minimum: 1

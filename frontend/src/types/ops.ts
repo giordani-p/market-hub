@@ -1,17 +1,12 @@
-import type { Product } from './catalog'
+import type { Product, SellerSummary } from './catalog'
 import type { EffectivePriority } from './conversation'
 import type { BuyerSummary, OrderItemStatus } from './order'
 
-export type { EffectivePriority }
+export type { EffectivePriority, SellerSummary }
 export type CalculatedPriority = 'low' | 'medium' | 'high'
 export type OpsOverride = 'critical' | null
 
 export type ConversationStatus = 'open' | 'closed'
-
-export interface SellerSummary {
-  id: string
-  name: string
-}
 
 export interface OpsConversation {
   id: string

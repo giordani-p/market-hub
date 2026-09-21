@@ -78,6 +78,7 @@ function ReadOnlyOffers({ offers }: { offers: Offer[] }) {
     <ul className={styles.offerList}>
       {offers.map((offer) => (
         <li key={offer.id} className={styles.offerRow}>
+          <span className={styles.offerSeller}>{offer.seller.name}</span>
           <span className={styles.offerPrice}>{formatCurrencyBRL(offer.price)}</span>
           <span className="text-muted">
             {offer.stock} em estoque · {offer.available ? 'Disponível' : 'Indisponível'}

@@ -2,6 +2,7 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
+from app.catalog.seed import SELLER_A_ID, SELLER_B_ID
 from app.core.events import OrderCreated, OrderItemCancelled, publisher
 from tests.integration.auth_helpers import buyer_headers, seller_a_headers, seller_b_headers
 
@@ -61,6 +62,9 @@ def test_checkout_with_items_from_two_sellers(catalog_client: TestClient) -> Non
     assert prices[offer_b["id"]] == "150.00"
     assert all(item["status"] == "placed" for item in body["items"])
     assert all(item["product"]["name"] == product["name"] for item in body["items"])
+    sellers = {item["offer_id"]: item["seller"] for item in body["items"]}
+    assert sellers[offer_a["id"]] == {"id": str(SELLER_A_ID), "name": "Loja A"}
+    assert sellers[offer_b["id"]] == {"id": str(SELLER_B_ID), "name": "Loja B"}
 
     assert catalog_client.get(f"/v1/offers/{offer_a['id']}").json()["stock"] == 8
     assert catalog_client.get(f"/v1/offers/{offer_b['id']}").json()["stock"] == 9
@@ -72,6 +76,10 @@ def test_checkout_with_items_from_two_sellers(catalog_client: TestClient) -> Non
     assert {item["offer_id"]: item["product"]["name"] for item in listed["items"]} == {
         offer_a["id"]: product["name"],
         offer_b["id"]: product["name"],
+    }
+    assert {item["offer_id"]: item["seller"]["name"] for item in listed["items"]} == {
+        offer_a["id"]: "Loja A",
+        offer_b["id"]: "Loja B",
     }
 
 

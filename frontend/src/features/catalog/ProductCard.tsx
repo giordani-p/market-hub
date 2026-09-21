@@ -6,19 +6,19 @@ import { formatCurrencyBRL } from '../../lib/utils/format'
 import type { CatalogRow } from './catalogRows'
 import styles from './ProductCard.module.css'
 
-function sellerLabel(sellerCount: number): string {
-  return sellerCount === 1 ? 'em 1 loja' : `em ${sellerCount} lojas`
+function sellerLabel(names: string[]): string {
+  return names.join(' · ')
 }
 
 /**
  * Card da grade do catalogo.
  *
  * Mostra so o que ajuda a escolher entre produtos: nome, menor preco e em
- * quantas lojas esta. A descricao fica na PDP -- no card ela ocupa tres
+ * quais lojas esta. A descricao fica na PDP -- no card ela ocupa tres
  * linhas e empurra o preco para baixo.
  */
 export function ProductCard({ row }: { row: CatalogRow }) {
-  const { product, lowestPrice, sellerCount, inStock } = row
+  const { product, lowestPrice, sellerNames, inStock } = row
 
   return (
     <li className={styles.item}>
@@ -34,7 +34,7 @@ export function ProductCard({ row }: { row: CatalogRow }) {
               <div className={styles.priceBlock}>
                 <span className={styles.priceLabel}>A partir de</span>
                 <span className={styles.price}>{formatCurrencyBRL(lowestPrice)}</span>
-                <span className={styles.sellers}>{sellerLabel(sellerCount)}</span>
+                <span className={styles.sellers}>{sellerLabel(sellerNames)}</span>
               </div>
             ) : (
               <div className={styles.priceBlock}>

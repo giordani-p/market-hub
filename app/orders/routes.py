@@ -10,8 +10,8 @@ from sqlalchemy.orm import Session
 
 from app.auth.dependencies import BuyerUser, SellerUser, get_current_user
 from app.auth.models import User, UserRole
-from app.catalog.models import Offer, Product
-from app.catalog.schemas import format_price
+from app.catalog.models import Offer, Product, Seller
+from app.catalog.schemas import SellerSummary, format_price
 from app.core.errors import ForbiddenError, InvalidTransitionError, ResourceNotFoundError
 from app.core.events import OrderItemCancelled, OrderItemStatusChanged, record_event
 from app.database import get_session
@@ -83,15 +83,16 @@ def _buyer_order_items_by_order(
     if not order_ids:
         return {}
     rows = session.execute(
-        select(OrderItem, Product, Order)
+        select(OrderItem, Product, Order, Seller)
         .join(Offer, OrderItem.offer_id == Offer.id)
         .join(Product, Offer.product_id == Product.id)
         .join(Order, OrderItem.order_id == Order.id)
+        .join(Seller, Offer.seller_id == Seller.id)
         .where(OrderItem.order_id.in_(order_ids))
         .order_by(OrderItem.created_at)
     ).all()
     grouped: dict[UUID, list[BuyerOrderItem]] = {}
-    for item, product, order in rows:
+    for item, product, order, seller in rows:
         grouped.setdefault(item.order_id, []).append(
             BuyerOrderItem(
                 id=item.id,
@@ -104,6 +105,7 @@ def _buyer_order_items_by_order(
                 created_at=item.created_at,
                 updated_at=item.updated_at,
                 product=ProductSummary(id=product.id, name=product.name),
+                seller=SellerSummary(id=seller.id, name=seller.name),
             )
         )
     return grouped

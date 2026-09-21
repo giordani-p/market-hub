@@ -37,6 +37,7 @@ const offer: Offer = {
   id: 'offer-1',
   product_id: 'product-1',
   seller_id: 'seller-1',
+  seller: { id: 'seller-1', name: 'Loja A' },
   price: '199.90',
   stock: 3,
   available: true,

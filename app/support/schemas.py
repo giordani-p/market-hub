@@ -6,6 +6,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.catalog.schemas import SellerSummary
 from app.orders.schemas import BuyerSummary, OrderSummary, ProductDetailSummary, ProductSummary
 
 InternalCommentAuthorType = Literal["ops", "seller"]
@@ -48,11 +49,6 @@ class InternalCommentResponse(BaseModel):
     author_type: str
     content: str
     created_at: datetime
-
-
-class SellerSummary(BaseModel):
-    id: UUID
-    name: str
 
 
 class OpsOrderItemListItem(BaseModel):
